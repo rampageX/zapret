@@ -1061,6 +1061,13 @@ supersu : /system/su.d
 приложения (например, из приложения терминала, а не из-под adb shell или ssh под рутом).
 В этом случае качаем upx и лечим распаковкой через "upx -d tpws"
 
+Ответ на вопрос куда поместить tpws на android без рута, чтобы потом его запускать из приложений.
+Файл заливаем через adb shell в /data/local/tmp/, лучше всего в субфолдер.
+mkdir /data/local/tmp/zapret
+adb push tpws /data/local/tmp/zapret
+chmod 755 /data/local/tmp/zapret /data/local/tmp/zapret/tpws
+chcon u:object_r:system_file:s0 /data/local/tmp/zapret/tpws
+
 Мобильные модемы и роутеры huawei
 ---------------------------------
 
