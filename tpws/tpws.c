@@ -470,7 +470,8 @@ static bool find_listen_addr(struct sockaddr_storage *salisten, bool bindll, int
 static bool set_ulimit()
 {
 	FILE *F;
-	int fdmax,fdmin_system,n,cur_lim=0;
+	int n;
+	rlim_t fdmax,fdmin_system,cur_lim=0;
 
 	if (!params.maxfiles)
 	{
@@ -483,14 +484,14 @@ static bool set_ulimit()
 	else
 		fdmax = params.maxfiles;
 	fdmin_system = fdmax + 4096;
-	DBGPRINT("set_ulimit : fdmax=%d fdmin_system=%d",fdmax,fdmin_system)
+	DBGPRINT("set_ulimit : fdmax=%llu fdmin_system=%llu",fdmax,fdmin_system)
 
 	if (!(F=fopen("/proc/sys/fs/file-max","r")))
 		return false;
-	n=fscanf(F,"%d",&cur_lim);
+	n=fscanf(F,"%llu",&cur_lim);
 	fclose(F);
 	if (!n)	return false;
-	DBGPRINT("set_ulimit : current system file-max=%d",cur_lim)
+	DBGPRINT("set_ulimit : current system file-max=%llu",cur_lim)
 	if (cur_lim<fdmin_system)
 	{
 		DBGPRINT("set_ulimit : system fd limit is too low. trying to increase")
@@ -499,7 +500,7 @@ static bool set_ulimit()
 			fprintf(stderr,"set_ulimit : could not open /proc/sys/fs/file-max for write\n");
 			return false;
 		}
-		n=fprintf(F,"%d",fdmin_system);
+		n=fprintf(F,"%llu",fdmin_system);
 		fclose(F);
 		if (!n)
 		{
