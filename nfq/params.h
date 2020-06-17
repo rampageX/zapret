@@ -15,7 +15,7 @@ struct params_s
 	bool debug;
 	int wsize;
 	int qnum;
-	bool hostcase, hostnospace;
+	bool hostcase, hostnospace, domcase;
 	char hostspell[4];
 	enum dpi_desync_mode desync_mode;
 	bool desync_retrans,desync_skip_nosni,desync_any_proto;
