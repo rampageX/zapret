@@ -135,6 +135,7 @@ static void exithelp()
 		" --hosttab\t\t\t; add tab after Host: name\n"
 		" --hostnospace\t\t\t; remove space after Host:\n"
 		" --hostpad=<bytes>\t\t; add dummy padding headers before Host:\n"
+		" --domcase\t\t\t; mix domain case : Host: TeSt.cOm\n"
 		" --methodspace\t\t\t; add extra space after method\n"
 		" --methodeol\t\t\t; add end-of-line before method\n"
 		" --unixeol\t\t\t; replace 0D0A to 0A\n"
@@ -191,22 +192,23 @@ void parse_params(int argc, char *argv[])
 		{ "hostdot",no_argument,0,0 },// optidx=18
 		{ "hostnospace",no_argument,0,0 },// optidx=19
 		{ "hostpad",required_argument,0,0 },// optidx=20
-		{ "split-http-req",required_argument,0,0 },// optidx=21
-		{ "split-pos",required_argument,0,0 },// optidx=22
-		{ "methodspace",no_argument,0,0 },// optidx=23
-		{ "methodeol",no_argument,0,0 },// optidx=24
-		{ "hosttab",no_argument,0,0 },// optidx=25
-		{ "unixeol",no_argument,0,0 },// optidx=26
-		{ "hostlist",required_argument,0,0 },// optidx=27
-		{ "pidfile",required_argument,0,0 },// optidx=28
-		{ "debug",optional_argument,0,0 },// optidx=29
-		{ "local-rcvbuf",required_argument,0,0 },// optidx=30
-		{ "local-sndbuf",required_argument,0,0 },// optidx=31
-		{ "remote-rcvbuf",required_argument,0,0 },// optidx=32
-		{ "remote-sndbuf",required_argument,0,0 },// optidx=33
-		{ "socks",no_argument,0,0 },// optidx=34
-		{ "no-resolve",no_argument,0,0 },// optidx=35
-		{ "skip-nodelay",no_argument,0,0 },// optidx=36
+		{ "domcase",no_argument,0,0 },// optidx=21
+		{ "split-http-req",required_argument,0,0 },// optidx=22
+		{ "split-pos",required_argument,0,0 },// optidx=23
+		{ "methodspace",no_argument,0,0 },// optidx=24
+		{ "methodeol",no_argument,0,0 },// optidx=25
+		{ "hosttab",no_argument,0,0 },// optidx=26
+		{ "unixeol",no_argument,0,0 },// optidx=27
+		{ "hostlist",required_argument,0,0 },// optidx=28
+		{ "pidfile",required_argument,0,0 },// optidx=29
+		{ "debug",optional_argument,0,0 },// optidx=30
+		{ "local-rcvbuf",required_argument,0,0 },// optidx=31
+		{ "local-sndbuf",required_argument,0,0 },// optidx=32
+		{ "remote-rcvbuf",required_argument,0,0 },// optidx=33
+		{ "remote-sndbuf",required_argument,0,0 },// optidx=34
+		{ "socks",no_argument,0,0 },// optidx=35
+		{ "no-resolve",no_argument,0,0 },// optidx=36
+		{ "skip-nodelay",no_argument,0,0 },// optidx=37
 		{ NULL,0,NULL,0 }
 	};
 	while ((v = getopt_long_only(argc, argv, "", long_options, &option_index)) != -1)
@@ -333,7 +335,11 @@ void parse_params(int argc, char *argv[])
 			params.hostpad = atoi(optarg);
 			params.tamper = true;
 			break;
-		case 21: /* split-http-req */
+		case 21: /* domcase */
+			params.domcase = true;
+			params.tamper = true;
+			break;
+		case 22: /* split-http-req */
 			if (!strcmp(optarg, "method"))
 				params.split_http_req = split_method;
 			else if (!strcmp(optarg, "host"))
@@ -345,7 +351,7 @@ void parse_params(int argc, char *argv[])
 			}
 			params.tamper = true;
 			break;
-		case 22: /* split-pos */
+		case 23: /* split-pos */
 			i = atoi(optarg);
 			if (i)
 				params.split_pos = i;
@@ -356,55 +362,55 @@ void parse_params(int argc, char *argv[])
 			}
 			params.tamper = true;
 			break;
-		case 23: /* methodspace */
+		case 24: /* methodspace */
 			params.methodspace = true;
 			params.tamper = true;
 			break;
-		case 24: /* methodeol */
+		case 25: /* methodeol */
 			params.methodeol = true;
 			params.tamper = true;
 			break;
-		case 25: /* hosttab */
+		case 26: /* hosttab */
 			params.hosttab = true;
 			params.tamper = true;
 			break;
-		case 26: /* unixeol */
+		case 27: /* unixeol */
 			params.unixeol = true;
 			params.tamper = true;
 			break;
-		case 27: /* hostlist */
+		case 28: /* hostlist */
 			if (!LoadHostList(&params.hostlist, optarg))
 				exit_clean(1);
 			strncpy(params.hostfile,optarg,sizeof(params.hostfile));
 			params.hostfile[sizeof(params.hostfile)-1]='\0';
 			params.tamper = true;
 			break;
-		case 28: /* pidfile */
+		case 29: /* pidfile */
 			strncpy(params.pidfile,optarg,sizeof(params.pidfile));
 			params.pidfile[sizeof(params.pidfile)-1]='\0';
 			break;
-		case 29:
+		case 30:
 			params.debug = optarg ? atoi(optarg) : 1;
 			break;
-		case 30: /* local-rcvbuf */
+		case 31: /* local-rcvbuf */
 			params.local_rcvbuf = atoi(optarg)/2;
 			break;
-		case 31: /* local-sndbuf */
+		case 32: /* local-sndbuf */
 			params.local_sndbuf = atoi(optarg)/2;
 			break;
-		case 32: /* remote-rcvbuf */
+		case 33: /* remote-rcvbuf */
 			params.remote_rcvbuf = atoi(optarg)/2;
 			break;
-		case 33: /* remote-sndbuf */
+		case 34: /* remote-sndbuf */
 			params.remote_sndbuf = atoi(optarg)/2;
 			break;
-		case 34: /* socks */
+		case 35: /* socks */
 			params.proxy_type = CONN_TYPE_SOCKS;
 			break;
-		case 35: /* no-resolve */
+		case 36: /* no-resolve */
 			params.no_resolve = true;
 			break;
-		case 36: /* skip-nodelay */
+		case 37: /* skip-nodelay */
 			params.skip_nodelay = true;
 			break;
 		}

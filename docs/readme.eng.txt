@@ -123,6 +123,7 @@ It takes the following parameters:
  --hostcase           			; change Host: => host:
  --hostspell=HoSt      			; exact spelling of the "Host" header. must be 4 chars. default is "host"
  --hostnospace         			; remove space after Host: and add it to User-Agent: to preserve packet size
+ --domcase				; mix domain case after Host: like this : TeSt.cOm
  --daemon              			; daemonize
  --pidfile=<filename>  			; write pid to file
  --user=<username>      		; drop root privs
@@ -255,6 +256,7 @@ tpws is transparent proxy.
  --hosttab                      ; add tab after Host: name
  --hostnospace                  ; remove space after Host:
  --hostpad=<bytes>		; add dummy padding headers before Host:
+ --domcase			; mix domain case after Host: like this : TeSt.cOm
  --methodspace                  ; add extra space after method
  --methodeol                    ; add end-of-line before method
  --unixeol                      ; replace 0D0A to 0A
@@ -466,6 +468,28 @@ supersu : /system/su.d
 
 I haven't checked whether android can kill iptable rules at its own will during wifi connection/disconnection,
 mobile data on/off, ...
+
+
+Other devices
+-------------
+
+Author's goal does not include easy supporting as much devices as possibles.
+Please do not ask for easy supporting firmwares. It requires a lot of work and owning lots of devices. Its counterproductive.
+As a devices owner its easier for you and should not be too hard.
+Binaries are universal. They can run on almost all firmwares.
+You will need :
+ * root shell access. true sh shell, not microtik-like console
+ * startup hook
+ * r/w partition to store binaries and startup script with executable permission (+x)
+ * tpws can be run almost anywhere but nfqws require kernel support for NFQEUEUE. Its missing in most firmwares.
+ * too old 2.6 kernels are unsupported and can cause errors
+If binaries crash with segfault (rare but happens on some kernels) try to unpack upx like this : upx -d tpws.
+First manually debug your scenario. Run iptables + daemon and check if its what you want.
+Write your own script with iptables magic and run required daemon from there. Put it to startup.
+Dont ask me how to do it. Its different for all firmwares and requires studying.
+Find manual or reverse engineer yourself.
+Check for race conditions. Firmware can clear or modify iptables after your startup script.
+If this is the case then run another script in background and add some delay there.
 
 
 Https blocking bypass

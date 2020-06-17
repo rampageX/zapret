@@ -168,6 +168,7 @@ nfqws
  --hostcase				; менять регистр заголовка "Host:" по умолчанию на "host:".
  --hostnospace				; убрать пробел после "Host:" и переместить его в конец значения "User-Agent:" для сохранения длины пакета
  --hostspell=HoST			; точное написание заголовка Host (можно "HOST" или "HoSt"). автоматом включает --hostcase
+ --domcase				; домен после Host: сделать таким : TeSt.cOm
  --dpi-desync[=<mode>]			; атака по десинхронизации DPI. mode : fake rst rstack disorder disorder2 split split2
  --dpi-desync-fwmark=<int|0xHEX>        ; бит fwmark для пометки десинхронизирующих пакетов, чтобы они повторно не падали в очередь. default = 0x40000000
  --dpi-desync-ttl=<int>                 ; установить ttl для десинхронизирующих пакетов
@@ -315,6 +316,7 @@ tpws - это transparent proxy.
  --hosttab		; добавление табуляции после имени хоста : "Host: kinozal.tv\t"
  --hostnospace		; убрать пробел после "Host:"
  --hostpad=<bytes>	; добавить паддинг-хедеров общей длиной <bytes> перед Host:
+ --domcase		; домен после Host: сделать таким : TeSt.cOm
  --methodspace		; добавить пробел после метода : "GET /" => "GET  /"
  --methodeol		; добавить перевод строки перед методом  : "GET /" => "\r\nGET  /"
  --unixeol		; конвертировать 0D0A в 0A и использовать везде 0A

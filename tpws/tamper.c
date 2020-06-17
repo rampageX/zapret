@@ -123,6 +123,14 @@ void modify_tcp_segment(char *segment,size_t segment_buffer_size,size_t *size,si
 					(*size)++; // block will grow by 1 byte
 				}
 			}
+			if (params.domcase && find_host(&pHost,segment,*size))
+			{
+				p = pHost + 5;
+				pos = p - segment;
+				VPRINT("Mixing domain case at pos %zu",pos)
+				for (; p < (segment + *size) && *p != '\r' && *p != '\n'; p++)
+					*p = (((size_t)p) & 1) ? tolower(*p) : toupper(*p);
+			}
 			if (params.hostnospace && find_host(&pHost,segment,*size) && (pHost+5)<(segment+*size) && pHost[5] == ' ')
 			{
 				p = pHost + 6;

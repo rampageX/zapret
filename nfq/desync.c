@@ -73,7 +73,7 @@ packet_process_result dpi_desync_packet(uint8_t *data_pkt, size_t len_pkt, struc
 	packet_process_result res=pass;
 
 	if (!!iphdr == !!ip6hdr) return res; // one and only one must be present
-	if (params.desync_mode==DESYNC_NONE && !params.hostcase && !params.hostnospace) return res; // nothing to do. do not waste cpu
+	if (params.desync_mode==DESYNC_NONE && !params.hostcase && !params.hostnospace && !params.domcase) return res; // nothing to do. do not waste cpu
 
 	if (!tcphdr->syn && len_payload)
 	{
@@ -83,7 +83,7 @@ packet_process_result dpi_desync_packet(uint8_t *data_pkt, size_t len_pkt, struc
 		char host[256];
 		bool bHaveHost=false;
 		bool bIsHttp;
-		uint8_t *phost;
+		uint8_t *p, *phost;
 
 		if (bIsHttp = IsHttp(data_payload,len_payload))
 		{
@@ -130,12 +130,19 @@ packet_process_result dpi_desync_packet(uint8_t *data_pkt, size_t len_pkt, struc
 			}
 		}
 
-		if (bIsHttp && (params.hostcase || params.hostnospace) && (phost = (uint8_t*)memmem(data_payload, len_payload, "\r\nHost: ", 8)))
+		if (bIsHttp && (params.hostcase || params.hostnospace || params.domcase) && (phost = (uint8_t*)memmem(data_payload, len_payload, "\r\nHost: ", 8)))
 		{
 			if (params.hostcase)
 			{
 				DLOG("modifying Host: => %c%c%c%c:\n", params.hostspell[0], params.hostspell[1], params.hostspell[2], params.hostspell[3])
 				memcpy(phost + 2, params.hostspell, 4);
+				res=modify;
+			}
+			if (params.domcase)
+			{
+				DLOG("mixing domain case\n");
+				for (p = phost+7; p < (data_payload + len_payload) && *p != '\r' && *p != '\n'; p++)
+					*p = (((size_t)p) & 1) ? tolower(*p) : toupper(*p);
 				res=modify;
 			}
 			uint8_t *pua;

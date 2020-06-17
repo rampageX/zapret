@@ -24,7 +24,7 @@ struct params_s
 	int local_rcvbuf,local_sndbuf,remote_rcvbuf,remote_sndbuf;
 
 	bool tamper; // any tamper option is set
-	bool hostcase, hostdot, hosttab, hostnospace, methodspace, methodeol, unixeol;
+	bool hostcase, hostdot, hosttab, hostnospace, methodspace, methodeol, unixeol, domcase;
 	int hostpad;
 	char hostspell[4];
 	enum splithttpreq split_http_req;
