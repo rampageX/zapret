@@ -185,8 +185,8 @@ algorithms are used.
 Mode 'disorder2' disables sending of fake segments.
 
 Split mode is very similar to disorder but without segment reordering :
-1. 1st segment
-2. fake 1st segment, data filled with zeroes
+1. fake 1st segment, data filled with zeroes
+2. 1st segment
 3. fake 1st segment, data filled with zeroes (2nd copy)
 4. 2nd segment
 Mode 'split2' disables sending of fake segments. It can be used as a faster alternative to --wsize.
