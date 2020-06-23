@@ -12,8 +12,8 @@ uint32_t net32_add(uint32_t netorder_value, uint32_t cpuorder_increment)
 
 uint8_t *tcp_find_option(struct tcphdr *tcp, uint8_t kind)
 {
-	char *t = (char*)(tcp+1);
-	char *end = (char*)tcp + (tcp->doff<<2);
+	uint8_t *t = (uint8_t*)(tcp+1);
+	uint8_t *end = (uint8_t*)tcp + (tcp->doff<<2);
 	while(t<end)
 	{
 		switch(*t)
@@ -26,6 +26,7 @@ uint8_t *tcp_find_option(struct tcphdr *tcp, uint8_t kind)
 			default: // kind,len,data
 				if ((t+1)>=end || (t+t[1])>end)
 					break;
+				if (t[1]<2) return NULL; // malformed option. break processing
 				if (*t==kind)
 					return t;
 				t+=t[1];
