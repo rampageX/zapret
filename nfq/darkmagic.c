@@ -19,14 +19,13 @@ uint8_t *tcp_find_option(struct tcphdr *tcp, uint8_t kind)
 		switch(*t)
 		{
 			case 0: // end
-				break; 
+				return NULL;
 			case 1: // noop
 				t++;
 				break;
 			default: // kind,len,data
-				if ((t+1)>=end || (t+t[1])>end)
-					break;
-				if (t[1]<2) return NULL; // malformed option. break processing
+				if ((t+1)>=end || t[1]<2 || (t+t[1])>end)
+					return NULL;
 				if (*t==kind)
 					return t;
 				t+=t[1];
