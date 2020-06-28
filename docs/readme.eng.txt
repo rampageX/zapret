@@ -484,7 +484,9 @@ Other devices
 
 Author's goal does not include easy supporting as much devices as possibles.
 Please do not ask for easy supporting firmwares. It requires a lot of work and owning lots of devices. Its counterproductive.
-As a devices owner its easier for you and should not be too hard.
+As a devices owner its easier for you and should not be too hard if firmware is open.
+Most closed stock firmwares are not designed for custom usage and sometimes actively prevent it.
+In the latter case you have to hack into it and reverse engineer. Its not easy.
 Binaries are universal. They can run on almost all firmwares.
 You will need :
  * root shell access. true sh shell, not microtik-like console
