@@ -469,6 +469,15 @@ supersu : /system/su.d
 I haven't checked whether android can kill iptable rules at its own will during wifi connection/disconnection,
 mobile data on/off, ...
 
+How to run tpws on root-less android.
+You can't write to /system, /data, can't run from sd card.
+Selinux prevents running executables in /data/local/tmp from apps.
+Use adb and adb shell.
+mkdir /data/local/tmp/zapret
+adb push tpws /data/local/tmp/zapret
+chmod 755 /data/local/tmp/zapret /data/local/tmp/zapret/tpws
+chcon u:object_r:system_file:s0 /data/local/tmp/zapret/tpws
+Now its possible to run /data/local/tmp/zapret/tpws from any app such as tasker.
 
 Other devices
 -------------
