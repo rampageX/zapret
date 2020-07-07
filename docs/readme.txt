@@ -1130,6 +1130,7 @@ tpws в режиме socks можно запускать и под более-м
 с установленным WSL. Совсем не обязательно устанавливать дистрибутив убунту, как вам напишут почти в каждой
 статье про WSL, которую вы найдете в сети. tpws - статический бинарик, ему дистрибутив не нужен.
 
+Установить WSL : dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all
 Скопировать на целевую систему binaries/x86_64/tpws_wsl.tgz.
 Выполнить : wsl --import tpws "%USERPROFILE%\tpws" tpws_wsl.tgz
 Запустить : wsl --exec /tpws --uid=1 --no-resolve --socks --bind-addr=127.0.0.1 --port=1080 <параметры_дурения>

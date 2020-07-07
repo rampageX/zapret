@@ -487,6 +487,7 @@ windows 10 and windows server.
 Its not required to install any linux distributions as suggested in most articles.
 tpws is static binary. It doesn't need a distribution.
 
+Install WSL : dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all
 Copy binaries/x86_64/tpws_wsl.tgz to the target system.
 Run : wsl --import tpws "%USERPROFILE%\tpws" tpws_wsl.tgz
 Run tpws : wsl --exec /tpws --uid=1 --no-resolve --socks --bind-addr=127.0.0.1 --port=1080 <fooling_options>
