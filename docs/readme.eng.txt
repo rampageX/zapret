@@ -487,11 +487,8 @@ windows 10 and windows server.
 Its not required to install any linux distributions as suggested in most articles.
 tpws is static binary. It doesn't need a distribution.
 
-Take binaries/x86_64/tpws.
-First unpack the binary using : upx -d tpws. Upx usually crashes in WSL environment.
-Make tar file from this single executable (chmod 755) : tar cf tpws.tar tpws
-Do it only in *nix or WSL (need distribution) ! In windows you wiil lose chmod.
-Copy tpws.tar to the target system. Run : wsl --import tpws "%USERPROFILE%\tpws" tpws.tar
+Copy binaries/x86_64/tpws_wsl.tgz to the target system.
+Run : wsl --import tpws "%USERPROFILE%\tpws" tpws_wsl.tgz
 Run tpws : wsl --exec /tpws --uid=1 --no-resolve --socks --bind-addr=127.0.0.1 --port=1080 <fooling_options>
 Configure socks as 127.0.0.1:1080 in a browser or another program.
 
