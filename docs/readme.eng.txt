@@ -479,6 +479,28 @@ chmod 755 /data/local/tmp/zapret /data/local/tmp/zapret/tpws
 chcon u:object_r:system_file:s0 /data/local/tmp/zapret/tpws
 Now its possible to run /data/local/tmp/zapret/tpws from any app such as tasker.
 
+Windows (WSL)
+-------------
+
+Using WSL (Windows subsystem for Linux) it's possible to run tpws in socks mode under rather new builds of
+windows 10 and windows server 2019+.
+Its not required to install any linux distributions as suggested in most articles.
+tpws is static binary. It doesn't need a distribution.
+
+Take binaries/x86_64/tpws.
+First unpack the binary using : upx -d tpws. Upx usually crashes in WSL environment.
+Make tar file from this single executable (chmod 755) : tar cf tpws.tar tpws
+Do it only in *nix ! In windows you wiil lose chmod
+Copy tpws.tar to the target system. Run : wsl --import tpws "%USERPROFILE%\tpws" tpws.tar
+Run tpws : wsl --exec /tpws --uid=1 --no-resolve --socks --bind-addr=127.0.0.1 --port=1080 <fooling_options>
+Configure socks as 127.0.0.1:1080 in a browser or another program.
+
+Cleanup : wsl --unregister tpws
+
+Tested in windows 10 build 19041 (20.04).
+
+NOTICE. There is native windows solution GoodByeDPI. It works on packet level like nfqws.
+
 Other devices
 -------------
 
