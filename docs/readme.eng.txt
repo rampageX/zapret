@@ -483,7 +483,7 @@ Windows (WSL)
 -------------
 
 Using WSL (Windows subsystem for Linux) it's possible to run tpws in socks mode under rather new builds of
-windows 10 and windows server 2019+.
+windows 10 and windows server.
 Its not required to install any linux distributions as suggested in most articles.
 tpws is static binary. It doesn't need a distribution.
 
