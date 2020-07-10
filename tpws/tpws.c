@@ -128,7 +128,7 @@ static void exithelp()
 		"\nTAMPERING:\n"
 		" --hostlist=<filename>\t\t; only act on host in the list (one host per line, subdomains auto apply)\n"
 		" --split-http-req=method|host\n"
-		" --split-pos=<numeric_offset>\t; split at specified pos. invalidates split-http-req.\n"
+		" --split-pos=<numeric_offset>\t; split at specified pos. split-http-req takes precedence for http.\n"
 		" --split-any-protocol\t\t; split not only http and https\n"
 		" --hostcase\t\t\t; change Host: => host:\n"
 		" --hostspell\t\t\t; exact spelling of \"Host\" header. must be 4 chars. default is \"host\"\n"
