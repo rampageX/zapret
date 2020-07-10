@@ -3,6 +3,7 @@
 #include "tamper.h"
 #include "params.h"
 #include "hostlist.h"
+#include "protocol.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -57,7 +58,7 @@ void modify_tcp_segment(char *segment,size_t segment_buffer_size,size_t *size,si
 			Host[pp - p] = '\0';
 			VPRINT("Requested Host is : %s", Host)
 			for(p = Host; *p; p++) *p=tolower(*p);
-			bBypass = !SearchHostList(params.hostlist,Host);
+			bBypass = !SearchHostList(params.hostlist,Host,!!params.debug);
 		}
 		if (!bBypass)
 		{
@@ -87,7 +88,6 @@ void modify_tcp_segment(char *segment,size_t segment_buffer_size,size_t *size,si
 					memmove(segment + 1, segment, *size);
 					(*size)++;;
 					segment[0] = '\n';
-					if (*split_pos) (*split_pos)++;
 				}
 				else
 				{
@@ -95,7 +95,6 @@ void modify_tcp_segment(char *segment,size_t segment_buffer_size,size_t *size,si
 					*size += 2;
 					segment[0] = '\r';
 					segment[1] = '\n';
-					if (*split_pos) *split_pos += 2;
 				}
 				pHost = NULL; // invalidate
 			}
@@ -192,10 +191,8 @@ void modify_tcp_segment(char *segment,size_t segment_buffer_size,size_t *size,si
 					pHost = NULL; // invalidate
 				}
 			}
-			if (!params.split_pos)
+			switch (params.split_http_req)
 			{
-				switch (params.split_http_req)
-				{
 				case split_method:
 					*split_pos = method_len - 1 + params.methodeol + (params.methodeol && !params.unixeol);
 					break;
@@ -203,18 +200,36 @@ void modify_tcp_segment(char *segment,size_t segment_buffer_size,size_t *size,si
 					if (find_host(&pHost,segment,*size))
 						*split_pos = pHost + 6 - bRemovedHostSpace - segment;
 					break;
-				}
+				default:
+					if (params.split_pos < *size) *split_pos = params.split_pos;
 			}
-			else if (params.split_pos < *size) *split_pos = params.split_pos;
 		}
 		else
 		{
 			VPRINT("Not acting on this request")
 		}
 	}
-	else
+	else if (params.split_pos && params.split_pos < *size)
 	{
-		// this is the only parameter applicable to non-http block (may be https ?)
-		if (params.split_pos && params.split_pos < *size) *split_pos = params.split_pos;
+		// split-pos is the only parameter applicable to non-http block (may be https ?)
+		if (IsTLSClientHello(segment,*size))
+		{
+			char host[256];
+
+			VPRINT("packet contains TLS ClientHello")
+			// we need host only if hostlist is present
+			if (params.hostlist && TLSHelloExtractHost(segment,*size,host,sizeof(host)))
+			{
+				VPRINT("hostname: %s",host)
+				if (!SearchHostList(params.hostlist,host,!!params.debug))
+				{
+					VPRINT("Not acting on this request")
+					return;
+				}
+			}
+			*split_pos = params.split_pos;
+		}
+		else if (params.split_any_protocol)
+			*split_pos = params.split_pos;
 	}
 }

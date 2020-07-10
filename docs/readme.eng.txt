@@ -247,9 +247,10 @@ tpws is transparent proxy.
 				; its worth to make a reserve with 1.5 multiplier. by default maxfiles is (X*connections)*1.5+16
  --max-orphan-time=<sec>	; if local leg sends something and closes and remote leg is still connecting then cancel connection attempt after N seconds
 
- --hostlist=<filename>          ; only act on host in the list (one host per line, subdomains auto apply)
- --split-http-req=method|host	; split http request at specified logical position
- --split-pos=<numeric_offset>   ; split at specified pos. invalidates split-http-req.
+ --hostlist=<filename>          ; only act on host in the list (one host per line, subdomains auto apply, gzip lists supported)
+ --split-http-req=method|host	; split http request at specified logical position.
+ --split-pos=<numeric_offset>   ; split at specified pos. split-http-req takes precedence over split-pos for http reqs.
+ --split-any-protocol		; split not only http and https
  --hostcase                     ; change Host: => host:
  --hostspell                    ; exact spelling of "Host" header. must be 4 chars. default is "host"
  --hostdot                      ; add "." after Host: name
@@ -266,8 +267,9 @@ tpws is transparent proxy.
  --uid=uid[:gid]		; drop root privs
  
 The manipulation parameters can be combined in any way.
-There are exceptions: split-pos replaces split-http-req. hostdot and hosttab are mutually exclusive.
-Only split-pos option works for non-HTTP traffic.
+
+split-http-req takes precedence over split-pos for http reqs.
+split-pos works by default only on http and TLS ClientHello. use --split-any-protocol to act on any packet
 
 tpws can bind only to one ip or to all at once.
 To bind to all ipv4, specify "0.0.0.0", to all ipv6 - "::". Without parameters, tpws bind to all ipv4 and ipv6.

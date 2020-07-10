@@ -93,7 +93,7 @@ bool LoadHostList(strpool **hostlist, char *filename)
 }
 
 
-bool SearchHostList(strpool *hostlist, const char *host)
+bool SearchHostList(strpool *hostlist, const char *host, bool debug)
 {
 	if (hostlist)
 	{
@@ -102,7 +102,7 @@ bool SearchHostList(strpool *hostlist, const char *host)
 		while (p)
 		{
 			bInHostList = StrPoolCheckStr(hostlist, p);
-			VPRINT("Hostlist check for %s : %s", p, bInHostList ? "positive" : "negative")
+			if (debug) VPRINT("Hostlist check for %s : %s", p, bInHostList ? "positive" : "negative")
 			if (bInHostList) return true;
 			p = strchr(p, '.');
 			if (p) p++;

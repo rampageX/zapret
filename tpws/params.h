@@ -28,6 +28,7 @@ struct params_s
 	int hostpad;
 	char hostspell[4];
 	enum splithttpreq split_http_req;
+	bool split_any_protocol;
 	int split_pos;
 	char hostfile[256];
 	char pidfile[256];

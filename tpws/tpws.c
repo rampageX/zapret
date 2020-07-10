@@ -129,6 +129,7 @@ static void exithelp()
 		" --hostlist=<filename>\t\t; only act on host in the list (one host per line, subdomains auto apply)\n"
 		" --split-http-req=method|host\n"
 		" --split-pos=<numeric_offset>\t; split at specified pos. invalidates split-http-req.\n"
+		" --split-any-protocol\t\t; split not only http and https\n"
 		" --hostcase\t\t\t; change Host: => host:\n"
 		" --hostspell\t\t\t; exact spelling of \"Host\" header. must be 4 chars. default is \"host\"\n"
 		" --hostdot\t\t\t; add \".\" after Host: name\n"
@@ -195,20 +196,21 @@ void parse_params(int argc, char *argv[])
 		{ "domcase",no_argument,0,0 },// optidx=21
 		{ "split-http-req",required_argument,0,0 },// optidx=22
 		{ "split-pos",required_argument,0,0 },// optidx=23
-		{ "methodspace",no_argument,0,0 },// optidx=24
-		{ "methodeol",no_argument,0,0 },// optidx=25
-		{ "hosttab",no_argument,0,0 },// optidx=26
-		{ "unixeol",no_argument,0,0 },// optidx=27
-		{ "hostlist",required_argument,0,0 },// optidx=28
-		{ "pidfile",required_argument,0,0 },// optidx=29
-		{ "debug",optional_argument,0,0 },// optidx=30
-		{ "local-rcvbuf",required_argument,0,0 },// optidx=31
-		{ "local-sndbuf",required_argument,0,0 },// optidx=32
-		{ "remote-rcvbuf",required_argument,0,0 },// optidx=33
-		{ "remote-sndbuf",required_argument,0,0 },// optidx=34
-		{ "socks",no_argument,0,0 },// optidx=35
-		{ "no-resolve",no_argument,0,0 },// optidx=36
-		{ "skip-nodelay",no_argument,0,0 },// optidx=37
+		{ "split-any-protocol",optional_argument,0,0},// optidx=24
+		{ "methodspace",no_argument,0,0 },// optidx=25
+		{ "methodeol",no_argument,0,0 },// optidx=26
+		{ "hosttab",no_argument,0,0 },// optidx=27
+		{ "unixeol",no_argument,0,0 },// optidx=28
+		{ "hostlist",required_argument,0,0 },// optidx=29
+		{ "pidfile",required_argument,0,0 },// optidx=30
+		{ "debug",optional_argument,0,0 },// optidx=31
+		{ "local-rcvbuf",required_argument,0,0 },// optidx=32
+		{ "local-sndbuf",required_argument,0,0 },// optidx=33
+		{ "remote-rcvbuf",required_argument,0,0 },// optidx=34
+		{ "remote-sndbuf",required_argument,0,0 },// optidx=35
+		{ "socks",no_argument,0,0 },// optidx=36
+		{ "no-resolve",no_argument,0,0 },// optidx=37
+		{ "skip-nodelay",no_argument,0,0 },// optidx=38
 		{ NULL,0,NULL,0 }
 	};
 	while ((v = getopt_long_only(argc, argv, "", long_options, &option_index)) != -1)
@@ -362,55 +364,58 @@ void parse_params(int argc, char *argv[])
 			}
 			params.tamper = true;
 			break;
-		case 24: /* methodspace */
+		case 24: /* split-any-protocol */
+			params.split_any_protocol = true;
+			break;
+		case 25: /* methodspace */
 			params.methodspace = true;
 			params.tamper = true;
 			break;
-		case 25: /* methodeol */
+		case 26: /* methodeol */
 			params.methodeol = true;
 			params.tamper = true;
 			break;
-		case 26: /* hosttab */
+		case 27: /* hosttab */
 			params.hosttab = true;
 			params.tamper = true;
 			break;
-		case 27: /* unixeol */
+		case 28: /* unixeol */
 			params.unixeol = true;
 			params.tamper = true;
 			break;
-		case 28: /* hostlist */
+		case 29: /* hostlist */
 			if (!LoadHostList(&params.hostlist, optarg))
 				exit_clean(1);
 			strncpy(params.hostfile,optarg,sizeof(params.hostfile));
 			params.hostfile[sizeof(params.hostfile)-1]='\0';
 			params.tamper = true;
 			break;
-		case 29: /* pidfile */
+		case 30: /* pidfile */
 			strncpy(params.pidfile,optarg,sizeof(params.pidfile));
 			params.pidfile[sizeof(params.pidfile)-1]='\0';
 			break;
-		case 30:
+		case 31:
 			params.debug = optarg ? atoi(optarg) : 1;
 			break;
-		case 31: /* local-rcvbuf */
+		case 32: /* local-rcvbuf */
 			params.local_rcvbuf = atoi(optarg)/2;
 			break;
-		case 32: /* local-sndbuf */
+		case 33: /* local-sndbuf */
 			params.local_sndbuf = atoi(optarg)/2;
 			break;
-		case 33: /* remote-rcvbuf */
+		case 34: /* remote-rcvbuf */
 			params.remote_rcvbuf = atoi(optarg)/2;
 			break;
-		case 34: /* remote-sndbuf */
+		case 35: /* remote-sndbuf */
 			params.remote_sndbuf = atoi(optarg)/2;
 			break;
-		case 35: /* socks */
+		case 36: /* socks */
 			params.proxy_type = CONN_TYPE_SOCKS;
 			break;
-		case 36: /* no-resolve */
+		case 37: /* no-resolve */
 			params.no_resolve = true;
 			break;
-		case 37: /* skip-nodelay */
+		case 38: /* skip-nodelay */
 			params.skip_nodelay = true;
 			break;
 		}
