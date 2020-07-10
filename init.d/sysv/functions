@@ -395,7 +395,7 @@ zapret_do_firewall()
 			[ "$1" = "1" ] && prepare_tpws
 			fw_tpws $1 "-m multiport --dports 80,443 $ipset_zapret dst" "-m multiport --dports 80,443 $ipset_zapret6 dst" $TPPORT
 			;;
-	    tpws_all_https)
+	    tpws_all_https|tpws_hostlist_https)
 			[ "$1" = "1" ] && prepare_tpws
 			fw_tpws $1 "-m multiport --dports 80,443" "-m multiport --dports 80,443" $TPPORT
 			;;
@@ -424,7 +424,7 @@ zapret_do_daemons()
 	# $1 - 1 - run, 0 - stop
 	
 	case "${MODE}" in
-	    tpws_hostlist)
+	    tpws_hostlist|tpws_hostlist_https)
 			do_tpws $1 1 "$TPWS_OPT --hostlist=$HOSTLIST"
 			;;
 	    tpws_ipset|tpws_all|tpws_ipset_https|tpws_all_https)

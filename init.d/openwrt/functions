@@ -279,7 +279,7 @@ zapret_apply_firewall()
 	    tpws_ipset_https)
 			fw_tpws "-m multiport --dports 80,443 $ipset_zapret dst" "-m multiport --dports 80,443 $ipset_zapret6 dst" $TPPORT
 			;;
-	    tpws_all_https)
+	    tpws_all_https|tpws_hostlist_https)
 			fw_tpws "-m multiport --dports 80,443" "-m multiport --dports 80,443" $TPPORT
 			;;
 	    nfqws_all_desync|nfqws_hostlist_desync)

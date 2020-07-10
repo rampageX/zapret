@@ -61,7 +61,7 @@ stop_tpws()
 
 start_service() {
 	case "${MODE}" in
-		tpws_hostlist)
+		tpws_hostlist|tpws_hostlist_https)
 			run_tpws 1 "$TPWS_OPT --hostlist=$HOSTLIST"
 			;;
 		tpws_ipset|tpws_all|tpws_ipset_https|tpws_all_https)
