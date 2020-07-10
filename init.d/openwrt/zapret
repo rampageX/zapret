@@ -17,17 +17,14 @@ NFQWS="$ZAPRET_BASE/nfq/nfqws"
 NFQWS_OPT_BASE="--qnum=$QNUM --user=$NFQWS_USER"
 
 TPWS_USER=daemon
-TPPORT_HTTP=1188
-TPPORT_HTTPS=1189
+TPPORT=1188
 TPWS="$ZAPRET_BASE/tpws/tpws"
 HOSTLIST="$ZAPRET_BASE/ipset/zapret-hosts.txt.gz"
 [ -f "$HOSTLIST" ] || HOSTLIST="$ZAPRET_BASE/ipset/zapret-hosts-user.txt"
-TPWS_OPT_BASE="--user=$TPWS_USER --bind-addr=127.0.0.1"
-TPWS_OPT_BASE6="--user=$TPWS_USER --bind-addr=::1"
+TPWS_OPT_BASE="--user=$TPWS_USER --bind-addr=127.0.0.1 --port=$TPPORT"
+TPWS_OPT_BASE6="--user=$TPWS_USER --bind-addr=::1 --port=$TPPORT"
 # first wait for lan to ifup, then wait for bind-wait-ip-linklocal seconds for link local address and bind-wait-ip for any ipv6 as the worst case
-TPWS_OPT_BASE6_PRE="--user=$TPWS_USER --bind-linklocal=prefer --bind-wait-ifup=30 --bind-wait-ip=30 --bind-wait-ip-linklocal=3"
-TPWS_OPT_BASE_HTTP="--port=$TPPORT_HTTP"
-TPWS_OPT_BASE_HTTPS="--port=$TPPORT_HTTPS"
+TPWS_OPT_BASE6_PRE="--user=$TPWS_USER --bind-linklocal=prefer --bind-wait-ifup=30 --bind-wait-ip=30 --bind-wait-ip-linklocal=3 --port=$TPPORT"
 
 run_daemon()
 {
@@ -65,14 +62,10 @@ stop_tpws()
 start_service() {
 	case "${MODE}" in
 		tpws_hostlist)
-			run_tpws 1 "$TPWS_OPT_BASE_HTTP $TPWS_OPT_HTTP --hostlist=$HOSTLIST"
+			run_tpws 1 "$TPWS_OPT --hostlist=$HOSTLIST"
 			;;
-		tpws_ipset|tpws_all)
-			run_tpws 1 "$TPWS_OPT_BASE_HTTP $TPWS_OPT_HTTP"
-			;;
-		tpws_ipset_https|tpws_all_https)
-			run_tpws 1 "$TPWS_OPT_BASE_HTTP $TPWS_OPT_HTTP"
-			run_tpws 2 "$TPWS_OPT_BASE_HTTPS $TPWS_OPT_HTTPS"
+		tpws_ipset|tpws_all|tpws_ipset_https|tpws_all_https)
+			run_tpws 1 "$TPWS_OPT"
 			;;
 		nfqws_ipset_desync|nfqws_all_desync)
 			run_daemon 1 $NFQWS "$NFQWS_OPT_BASE $NFQWS_OPT_DESYNC"

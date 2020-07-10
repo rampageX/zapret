@@ -14,17 +14,14 @@ QNUM=200
 NFQWS="$ZAPRET_BASE/nfq/nfqws"
 NFQWS_OPT_BASE="--qnum=$QNUM --user=$WS_USER"
 
-TPPORT_HTTP=1188
-TPPORT_HTTPS=1189
+TPPORT=1188
 TPWS="$ZAPRET_BASE/tpws/tpws"
 HOSTLIST="$ZAPRET_BASE/ipset/zapret-hosts.txt.gz"
 [ -f "$HOSTLIST" ] || HOSTLIST="$ZAPRET_BASE/ipset/zapret-hosts-user.txt"
-TPWS_OPT_BASE="--user=$WS_USER --bind-addr=127.0.0.1"
-TPWS_OPT_BASE6="--user=$WS_USER --bind-addr=::1"
+TPWS_OPT_BASE="--user=$WS_USER --bind-addr=127.0.0.1 --port=$TPPORT"
+TPWS_OPT_BASE6="--user=$WS_USER --bind-addr=::1 --port=$TPPORT"
 # first wait for lan to ifup, then wait for bind-wait-ip-linklocal seconds for link local address and bind-wait-ip for any ipv6 as the worst case
-TPWS_OPT_BASE6_PRE="--user=$WS_USER --bind-linklocal=prefer --bind-wait-ifup=30 --bind-wait-ip=30 --bind-wait-ip-linklocal=3"
-TPWS_OPT_BASE_HTTP="--port=$TPPORT_HTTP"
-TPWS_OPT_BASE_HTTPS="--port=$TPPORT_HTTPS"
+TPWS_OPT_BASE6_PRE="--user=$WS_USER --bind-linklocal=prefer --bind-wait-ifup=30 --bind-wait-ip=30 --bind-wait-ip-linklocal=3 --port=$TPPORT"
 
 [ -n "$IFACE_WAN" ] && IPT_OWAN="-o $IFACE_WAN"
 [ -n "$IFACE_WAN" ] && IPT_IWAN="-i $IFACE_WAN"
@@ -388,21 +385,19 @@ zapret_do_firewall()
 
 	case "${MODE}" in
 	    tpws_hostlist|tpws_all)
-			fw_tpws $1 "--dport 80" "--dport 80" $TPPORT_HTTP
+			fw_tpws $1 "--dport 80" "--dport 80" $TPPORT
 			;;
 	    tpws_ipset)
 			[ "$1" = "1" ] && prepare_tpws
-			fw_tpws $1 "--dport 80 $ipset_zapret dst" "--dport 80 $ipset_zapret6 dst" $TPPORT_HTTP
+			fw_tpws $1 "--dport 80 $ipset_zapret dst" "--dport 80 $ipset_zapret6 dst" $TPPORT
 			;;
 	    tpws_ipset_https)
 			[ "$1" = "1" ] && prepare_tpws
-			fw_tpws $1 "--dport 80 $ipset_zapret dst" "--dport 80 $ipset_zapret6 dst" $TPPORT_HTTP
-			fw_tpws $1 "--dport 443 $ipset_zapret dst" "--dport 443 $ipset_zapret6 dst" $TPPORT_HTTPS
+			fw_tpws $1 "-m multiport --dports 80,443 $ipset_zapret dst" "-m multiport --dports 80,443 $ipset_zapret6 dst" $TPPORT
 			;;
 	    tpws_all_https)
 			[ "$1" = "1" ] && prepare_tpws
-			fw_tpws $1 "--dport 80" "--dport 80" $TPPORT_HTTP
-			fw_tpws $1 "--dport 443" "--dport 443" $TPPORT_HTTPS
+			fw_tpws $1 "-m multiport --dports 80,443" "-m multiport --dports 80,443" $TPPORT
 			;;
 	    nfqws_all_desync|nfqws_hostlist_desync)
 			fw_nfqws_post $1 "$desync" "$desync" $QNUM
@@ -430,14 +425,10 @@ zapret_do_daemons()
 	
 	case "${MODE}" in
 	    tpws_hostlist)
-			do_tpws $1 1 "$TPWS_OPT_BASE_HTTP $TPWS_OPT_HTTP --hostlist=$HOSTLIST"
+			do_tpws $1 1 "$TPWS_OPT --hostlist=$HOSTLIST"
 			;;
-	    tpws_ipset|tpws_all)
-			do_tpws $1 1 "$TPWS_OPT_BASE_HTTP $TPWS_OPT_HTTP"
-			;;
-	    tpws_ipset_https|tpws_all_https)
-			do_tpws $1 1 "$TPWS_OPT_BASE_HTTP $TPWS_OPT_HTTP"
-			do_tpws $1 2 "$TPWS_OPT_BASE_HTTPS $TPWS_OPT_HTTPS"
+	    tpws_ipset|tpws_all|tpws_ipset_https|tpws_all_https)
+			do_tpws $1 1 "$TPWS_OPT"
 			;;
 	    nfqws_ipset_desync|nfqws_all_desync)
 			do_nfqws $1 1 "$NFQWS_OPT_DESYNC"

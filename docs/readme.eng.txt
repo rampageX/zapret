@@ -365,10 +365,11 @@ tpws_hostlist - same as tpws_all but touch only domains from the hostlist
 
 ipset - only fill ipset. futher actions depend on your own code
 
-Its possible to change manipulation options used by tpws separately for http and https :
+tpws options :
 
-TPWS_OPT_HTTP="--hostspell=HOST --split-http-req=method"
-TPWS_OPT_HTTPS="--split-pos=3"
+TPWS_OPT="--hostspell=HOST --split-http-req=method --split-pos=3"
+
+Single instance is used for both http and https.
 
 nfqws options for DPI desync attack:
 

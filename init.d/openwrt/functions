@@ -4,8 +4,7 @@
 . "$ZAPRET_BASE/config"
 
 QNUM=200
-TPPORT_HTTP=1188
-TPPORT_HTTPS=1189
+TPPORT=1188
 TPWS_USER=daemon
 [ -n "$DESYNC_MARK" ] || DESYNC_MARK=0x40000000
 
@@ -272,18 +271,16 @@ zapret_apply_firewall()
 
 	case "${MODE}" in
 	    tpws_hostlist|tpws_all)
-			fw_tpws "--dport 80" "--dport 80" $TPPORT_HTTP
+			fw_tpws "--dport 80" "--dport 80" $TPPORT
 			;;
 	    tpws_ipset)
-			fw_tpws "--dport 80 $ipset_zapret dst" "--dport 80 $ipset_zapret6 dst" $TPPORT_HTTP
+			fw_tpws "--dport 80 $ipset_zapret dst" "--dport 80 $ipset_zapret6 dst" $TPPORT
 			;;
 	    tpws_ipset_https)
-			fw_tpws "--dport 80 $ipset_zapret dst" "--dport 80 $ipset_zapret6 dst" $TPPORT_HTTP
-			fw_tpws "--dport 443 $ipset_zapret dst" "--dport 443 $ipset_zapret6 dst" $TPPORT_HTTPS
+			fw_tpws "-m multiport --dports 80,443 $ipset_zapret dst" "-m multiport --dports 80,443 $ipset_zapret6 dst" $TPPORT
 			;;
 	    tpws_all_https)
-			fw_tpws "--dport 80" "--dport 80" $TPPORT_HTTP
-			fw_tpws "--dport 443" "--dport 443" $TPPORT_HTTPS
+			fw_tpws "-m multiport --dports 80,443" "-m multiport --dports 80,443" $TPPORT
 			;;
 	    nfqws_all_desync|nfqws_hostlist_desync)
 			fw_nfqws_post "$desync" "$desync" $QNUM

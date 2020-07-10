@@ -593,10 +593,11 @@ tpws_hostlist - пропускать через tpws весь трафик на 
 ipset - только заполнить ipset. ipset может быть применен для заворота трафика на прокси или на VPN
 custom - нужно самому запрограммировать запуск демонов в init скрипте и правила iptables
 
-Для tpws отдельно настраиваются опции для http и https :
+Опции для tpws :
 
-TPWS_OPT_HTTP="--hostspell=HOST --split-http-req=method"
-TPWS_OPT_HTTPS="--split-pos=3"
+TPWS_OPT="--hostspell=HOST --split-http-req=method --split-pos=3"
+
+Для http и https используется 1 инстанс tpws.
 
 Опции nfqws для атаки десинхронизации DPI :
 
