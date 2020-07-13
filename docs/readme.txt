@@ -285,7 +285,7 @@ tpws - это transparent proxy.
  --bind-linklocal=prefer|force	; если prefer, то найти link local от iface6. если не найдено - использовать первый адрес любого типа.
  				; если force и link local не найден - выход по ошибке.
  --bind-iface4=<iface>	; слушать на первом ipv4 интерфейса iface
- --bind-iface6=<iface>	; слушать на первом ipv6 интерфейса iface. при bind-linklocal определяет интерфейс, откуда брать ipv6 link local
+ --bind-iface6=<iface>	; слушать на первом ipv6 интерфейса iface
  --bind-wait-ifup=<sec>	; ждать до N секунд появления и поднятия интерфейса
  --bind-wait-ip=<sec>	; ждать до N секунд получения IP адреса (если задан --bind-wait-ifup - время идет после поднятия интерфейса)
  --bind-wait-ip-linklocal=<sec> ; (только если заданы --bind-wait-ip и --bind-linklocal=prefer) согласиться на global address после N секунд
