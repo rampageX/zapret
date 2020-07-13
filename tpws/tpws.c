@@ -102,13 +102,15 @@ static bool is_interface_online(const char *ifname)
 static void exithelp()
 {
 	printf(
-		" --bind-addr=<ipv4_addr>|<ipv6_addr>\n"
+		" --bind-addr=<v4_addr>|<v6_addr>; for v6 link locals append %%interface_name\n"
 		" --bind-iface4=<interface_name>\t; bind to the first ipv4 addr of interface\n"
 		" --bind-iface6=<interface_name>\t; bind to the first ipv6 addr of interface\n"
 		" --bind-linklocal=prefer|force\t; prefer or force ipv6 link local\n"
 		" --bind-wait-ifup=<sec>\t\t; wait for interface to appear and up\n"
 		" --bind-wait-ip=<sec>\t\t; after ifup wait for ip address to appear up to N seconds\n"
 		" --bind-wait-ip-linklocal=<sec>\t; accept only link locals first N seconds then any\n"
+		" * multiple binds are supported. each bind-addr, bind-iface* start new bind\n"
+		" --port=<port>\t\t\t; only one port number for all binds is supported\n"
 		" --socks\t\t\t; implement socks4/5 proxy instead of transparent proxy\n"
 		" --no-resolve\t\t\t; disable socks5 remote dns ability (resolves are not async, they block all activity)\n"
 		" --local-rcvbuf=<bytes>\n"
@@ -116,7 +118,6 @@ static void exithelp()
 		" --remote-rcvbuf=<bytes>\n"
 		" --remote-sndbuf=<bytes>\n"
 		" --skip-nodelay\t\t\t; do not set TCP_NODELAY option for outgoing connections (incompatible with split options)\n"
-		" --port=<port>\n"
 		" --maxconn=<max_connections>\n"
 		" --maxfiles=<max_open_files>\t; should be at least (X*connections+16), where X=6 in tcp proxy mode, X=4 in tampering mode\n"
 		" --max-orphan-time=<sec>\t; if local leg sends something and closes and remote leg is still connecting then cancel connection attempt after N seconds\n"
@@ -161,6 +162,25 @@ static void exit_clean(int code)
 	cleanup_params();
 	exit(code);
 }
+static void nextbind_clean()
+{
+	params.binds_last++;
+	if (params.binds_last>=MAX_BINDS)
+	{
+		fprintf(stderr,"maximum of %d binds are supported\n",MAX_BINDS);
+		exit_clean(1);
+	}
+}
+static void checkbind_clean()
+{
+	if (params.binds_last<0)
+	{
+		fprintf(stderr,"start new bind with --bind-addr,--bind-iface*\n");
+		exit_clean(1);
+	}
+}
+
+
 void parse_params(int argc, char *argv[])
 {
 	int option_index = 0;
@@ -170,6 +190,7 @@ void parse_params(int argc, char *argv[])
 	memcpy(params.hostspell, "host", 4); // default hostspell
 	params.maxconn = DEFAULT_MAX_CONN;
 	params.max_orphan_time = DEFAULT_MAX_ORPHAN_TIME;
+	params.binds_last = -1;
 
 	const struct option long_options[] = {
 		{ "help",no_argument,0,0 },// optidx=0
@@ -223,23 +244,35 @@ void parse_params(int argc, char *argv[])
 			exithelp_clean();
 			break;
 		case 2: /* bind-addr */
-			strncpy(params.bindaddr, optarg, sizeof(params.bindaddr));
-			params.bindaddr[sizeof(params.bindaddr) - 1] = 0;
+			nextbind_clean();
+			{
+				char *p = strchr(optarg,'%');
+				if (p)
+				{
+					*p=0;
+					strncpy(params.binds[params.binds_last].bindiface, p+1, sizeof(params.binds[params.binds_last].bindiface));
+				}
+				strncpy(params.binds[params.binds_last].bindaddr, optarg, sizeof(params.binds[params.binds_last].bindaddr));
+			}
+			params.binds[params.binds_last].bindaddr[sizeof(params.binds[params.binds_last].bindaddr) - 1] = 0;
 			break;
 		case 3: /* bind-iface4 */
-			params.bind_if6=false;
-			strncpy(params.bindiface, optarg, sizeof(params.bindiface));
-			params.bindiface[sizeof(params.bindiface) - 1] = 0;
+			nextbind_clean();
+			params.binds[params.binds_last].bind_if6=false;
+			strncpy(params.binds[params.binds_last].bindiface, optarg, sizeof(params.binds[params.binds_last].bindiface));
+			params.binds[params.binds_last].bindiface[sizeof(params.binds[params.binds_last].bindiface) - 1] = 0;
 			break;
 		case 4: /* bind-iface6 */
-			params.bind_if6=true;
-			strncpy(params.bindiface, optarg, sizeof(params.bindiface));
-			params.bindiface[sizeof(params.bindiface) - 1] = 0;
+			nextbind_clean();
+			params.binds[params.binds_last].bind_if6=true;
+			strncpy(params.binds[params.binds_last].bindiface, optarg, sizeof(params.binds[params.binds_last].bindiface));
+			params.binds[params.binds_last].bindiface[sizeof(params.binds[params.binds_last].bindiface) - 1] = 0;
 			break;
 		case 5: /* bind-linklocal */
-			params.bindll = true;
+			checkbind_clean();
+			params.binds[params.binds_last].bindll = true;
 			if (!strcmp(optarg, "force"))
-				params.bindll_force=true;
+				params.binds[params.binds_last].bindll_force=true;
 			else if (strcmp(optarg, "prefer"))
 			{
 				fprintf(stderr, "invalid parameter in bind-linklocal : %s\n",optarg);
@@ -247,13 +280,16 @@ void parse_params(int argc, char *argv[])
 			}
 			break;
 		case 6: /* bind-wait-ifup */
-			params.bind_wait_ifup = atoi(optarg);
+			checkbind_clean();
+			params.binds[params.binds_last].bind_wait_ifup = atoi(optarg);
 			break;
 		case 7: /* bind-wait-ip */
-			params.bind_wait_ip = atoi(optarg);
+			checkbind_clean();
+			params.binds[params.binds_last].bind_wait_ip = atoi(optarg);
 			break;
 		case 8: /* bind-wait-ip-linklocal */
-			params.bind_wait_ip_ll = atoi(optarg);
+			checkbind_clean();
+			params.binds[params.binds_last].bind_wait_ip_ll = atoi(optarg);
 			break;
 		case 9: /* port */
 			i = atoi(optarg);
@@ -425,6 +461,10 @@ void parse_params(int argc, char *argv[])
 		fprintf(stderr, "Need port number\n");
 		exit_clean(1);
 	}
+	if (params.binds_last<=0)
+	{
+		params.binds_last=0; // default bind to all
+	}
 	if (params.skip_nodelay && (params.split_http_req || params.split_pos))
 	{
 		fprintf(stderr, "Cannot split with --skip-nodelay\n");
@@ -434,7 +474,7 @@ void parse_params(int argc, char *argv[])
 
 
 
-static bool find_listen_addr(struct sockaddr_storage *salisten, bool bindll, int *if_index)
+static bool find_listen_addr(struct sockaddr_storage *salisten, const char *bindiface, bool bind_if6, bool bindll, int *if_index)
 {
 	struct ifaddrs *addrs,*a;
 	bool found=false;
@@ -448,7 +488,7 @@ static bool find_listen_addr(struct sockaddr_storage *salisten, bool bindll, int
 		if (a->ifa_addr)
 		{
 			if (a->ifa_addr->sa_family==AF_INET &&
-			    *params.bindiface && !params.bind_if6 && !strcmp(a->ifa_name, params.bindiface))
+			    *bindiface && !bind_if6 && !strcmp(a->ifa_name, bindiface))
 			{
 				salisten->ss_family = AF_INET;
 				memcpy(&((struct sockaddr_in*)salisten)->sin_addr, &((struct sockaddr_in*)a->ifa_addr)->sin_addr, sizeof(struct in_addr));
@@ -458,8 +498,8 @@ static bool find_listen_addr(struct sockaddr_storage *salisten, bool bindll, int
 			// ipv6 links locals are fe80::/10
 			else if (a->ifa_addr->sa_family==AF_INET6
 			          &&
-			         (!*params.bindiface && bindll ||
-			          *params.bindiface && params.bind_if6 && !strcmp(a->ifa_name, params.bindiface))
+			         (!*bindiface && bindll ||
+			          *bindiface && bind_if6 && !strcmp(a->ifa_name, bindiface))
 			          &&
 				 (!bindll ||
 				  ((struct sockaddr_in6*)a->ifa_addr)->sin6_addr.s6_addr[0]==0xFE &&
@@ -526,118 +566,128 @@ static bool set_ulimit()
 	return n!=-1;
 }
 
-
-int main(int argc, char *argv[]) {
-	int listen_fd = -1;
-	int yes = 1, retval = 0;
-	int r;
+struct salisten_s
+{
 	struct sockaddr_storage salisten;
 	socklen_t salisten_len;
-	int ipv6_only=0,if_index=0;
+	int ipv6_only;
+};
+int main(int argc, char *argv[])
+{
+	int i, listen_fd[MAX_BINDS], yes = 1, retval = 0, r, if_index, exit_v=EXIT_FAILURE;
+	struct salisten_s list[MAX_BINDS];
 
 	srand(time(NULL));
-
 	parse_params(argc, argv);
 
-	memset(&salisten, 0, sizeof(salisten));
-	if (*params.bindiface)
-	{
-		if (params.bind_wait_ifup > 0)
-		{
-			int sec=0;
-			if (!is_interface_online(params.bindiface))
-			{
-				fprintf(stderr,"waiting ifup of %s for up to %d seconds...\n",params.bindiface,params.bind_wait_ifup);
-				do
-				{
-					sleep(1);
-					sec++;
-				}
-				while (!is_interface_online(params.bindiface) && sec<params.bind_wait_ifup);
-				if (sec>=params.bind_wait_ifup)
-				{
-					printf("wait timed out\n");
-					goto exiterr;
-				}
-			}
-		}
-		if (!(if_index = if_nametoindex(params.bindiface)) && params.bind_wait_ip<=0)
-		{
-			printf("bad iface %s\n",params.bindiface);
-			goto exiterr;
-		}
-	}
-	if (*params.bindaddr)
-	{
-		if (inet_pton(AF_INET, params.bindaddr, &((struct sockaddr_in*)&salisten)->sin_addr))
-		{
-			salisten.ss_family = AF_INET;
-		}
-		else if (inet_pton(AF_INET6, params.bindaddr, &((struct sockaddr_in6*)&salisten)->sin6_addr))
-		{
-			salisten.ss_family = AF_INET6;
-			ipv6_only = 1;
-		}
-		else
-		{
-			printf("bad bind addr : %s\n", params.bindaddr);
-			goto exiterr;
-		}
-	}
-	else
-	{
-		if (*params.bindiface || params.bindll)
-		{
-			bool found;
-			int sec=0;
-			
-			if (params.bind_wait_ip > 0)
-			{
-				fprintf(stderr,"waiting for ip for %d seconds...\n", params.bind_wait_ip);
-				if (params.bindll && !params.bindll_force && params.bind_wait_ip_ll>0)
-					fprintf(stderr,"during the first %d seconds accepting only link locals...\n", params.bind_wait_ip_ll);
-			}
-			
-			for(;;)
-			{
-				found = find_listen_addr(&salisten,params.bindll,&if_index);
-				if (found) break;
-				
-				if (params.bindll && !params.bindll_force && sec>=params.bind_wait_ip_ll)
-					if (found = find_listen_addr(&salisten,false,&if_index)) break;
-				
-				if (sec>=params.bind_wait_ip)
-					break;
-				
-				sleep(1);
-				sec++;
-			} 
+	memset(&list, 0, sizeof(list));
+	for(i=0;i<=params.binds_last;i++) listen_fd[i]=-1;
 
-			if (!found)
+	for(i=0;i<=params.binds_last;i++)
+	{
+		VPRINT("Prepare bind %d : addr=%s iface=%s v6=%u link_local=%u link_local_force=%u wait_ifup=%d wait_ip=%d wait_ip_ll=%d",i,
+			params.binds[i].bindaddr,params.binds[i].bindiface,params.binds[i].bind_if6,params.binds[i].bindll,params.binds[i].bindll_force,
+			params.binds[i].bind_wait_ifup,params.binds[i].bind_wait_ip,params.binds[i].bind_wait_ip_ll);
+		if_index=0;
+		if (*params.binds[i].bindiface)
+		{
+			if (params.binds[i].bind_wait_ifup > 0)
 			{
-				printf("suitable ip address not found\n");
+				int sec=0;
+				if (!is_interface_online(params.binds[i].bindiface))
+				{
+					printf("waiting ifup of %s for up to %d seconds...\n",params.binds[i].bindiface,params.binds[i].bind_wait_ifup);
+					do
+					{
+						sleep(1);
+						sec++;
+					}
+					while (!is_interface_online(params.binds[i].bindiface) && sec<params.binds[i].bind_wait_ifup);
+					if (sec>=params.binds[i].bind_wait_ifup)
+					{
+						printf("wait timed out\n");
+						goto exiterr;
+					}
+				}
+			}
+			if (!(if_index = if_nametoindex(params.binds[i].bindiface)) && params.binds[i].bind_wait_ip<=0)
+			{
+				printf("bad iface %s\n",params.binds[i].bindiface);
 				goto exiterr;
 			}
-			ipv6_only=1;
+		}
+		if (*params.binds[i].bindaddr)
+		{
+			if (inet_pton(AF_INET, params.binds[i].bindaddr, &((struct sockaddr_in*)(&list[i].salisten))->sin_addr))
+			{
+				list[i].salisten.ss_family = AF_INET;
+			}
+			else if (inet_pton(AF_INET6, params.binds[i].bindaddr, &((struct sockaddr_in6*)(&list[i].salisten))->sin6_addr))
+			{
+				list[i].salisten.ss_family = AF_INET6;
+				list[i].ipv6_only = 1;
+			}
+			else
+			{
+				printf("bad bind addr : %s\n", params.binds[i].bindaddr);
+				goto exiterr;
+			}
 		}
 		else
 		{
-			salisten.ss_family = AF_INET6;
-			// leave sin6_addr zero
+			if (*params.binds[i].bindiface || params.binds[i].bindll)
+			{
+				bool found;
+				int sec=0;
+
+				if (params.binds[i].bind_wait_ip > 0)
+				{
+					printf("waiting for ip for %d seconds...\n", params.binds[i].bind_wait_ip);
+					if (params.binds[i].bindll && !params.binds[i].bindll_force && params.binds[i].bind_wait_ip_ll>0)
+						printf("during the first %d seconds accepting only link locals...\n", params.binds[i].bind_wait_ip_ll);
+				}
+
+				for(;;)
+				{
+					found = find_listen_addr(&list[i].salisten,params.binds[i].bindiface,params.binds[i].bind_if6,params.binds[i].bindll,&if_index);
+					if (found) break;
+
+					if (params.binds[i].bindll && !params.binds[i].bindll_force && sec>=params.binds[i].bind_wait_ip_ll)
+						if (found = find_listen_addr(&list[i].salisten,params.binds[i].bindiface,params.binds[i].bind_if6,false,&if_index)) break;
+
+					if (sec>=params.binds[i].bind_wait_ip)
+						break;
+
+					sleep(1);
+					sec++;
+				} 
+
+				if (!found)
+				{
+					printf("suitable ip address not found\n");
+					goto exiterr;
+				}
+				list[i].ipv6_only=1;
+			}
+			else
+			{
+				list[i].salisten.ss_family = AF_INET6;
+				// leave sin6_addr zero
+			}
+		}
+		if (list[i].salisten.ss_family == AF_INET6)
+		{
+			list[i].salisten_len = sizeof(struct sockaddr_in6);
+			((struct sockaddr_in6*)(&list[i].salisten))->sin6_port = htons(params.port);
+			((struct sockaddr_in6*)(&list[i].salisten))->sin6_scope_id = if_index;
+		}
+		else
+		{
+			list[i].salisten_len = sizeof(struct sockaddr_in);
+			((struct sockaddr_in*)(&list[i].salisten))->sin_port = htons(params.port);
 		}
 	}
-	if (salisten.ss_family == AF_INET6)
-	{
-		salisten_len = sizeof(struct sockaddr_in6);
-		((struct sockaddr_in6*)&salisten)->sin6_port = htons(params.port);
-		((struct sockaddr_in6*)&salisten)->sin6_scope_id = if_index;
-	}
-	else
-	{
-		salisten_len = sizeof(struct sockaddr_in);
-		((struct sockaddr_in*)&salisten)->sin_port = htons(params.port);
-	}
-
+	
 	if (params.daemon) daemonize();
 
 	if (*params.pidfile && !writepid(params.pidfile))
@@ -646,51 +696,60 @@ int main(int argc, char *argv[]) {
 		goto exiterr;
 	}
 
-	if ((listen_fd = socket(salisten.ss_family, SOCK_STREAM, 0)) == -1) {
-		perror("socket: ");
-		goto exiterr;
-	}
 
-	if ((salisten.ss_family == AF_INET6) && setsockopt(listen_fd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6_only, sizeof(ipv6_only)) == -1)
+	for(i=0;i<=params.binds_last;i++)
 	{
-		perror("setsockopt (IPV6_ONLY): ");
-		goto exiterr;
-	}
+		VPRINT("Binding %d",i);
 
-	if (setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
-	{
-		perror("setsockopt (SO_REUSEADDR): ");
-		goto exiterr;
-	}
-	
-	//Mark that this socket can be used for transparent proxying
-	//This allows the socket to accept connections for non-local IPs
-	if (params.proxy_type==CONN_TYPE_TRANSPARENT)
-	{
-		if (setsockopt(listen_fd, SOL_IP, IP_TRANSPARENT, &yes, sizeof(yes)) == -1)
-		{
-			perror("setsockopt (IP_TRANSPARENT): ");
+		if ((listen_fd[i] = socket(list[i].salisten.ss_family, SOCK_STREAM, 0)) == -1) {
+			perror("socket: ");
 			goto exiterr;
 		}
-	}
-
-	if (!set_socket_buffers(listen_fd, params.local_rcvbuf, params.local_sndbuf))
-		goto exiterr;
-	if (!params.local_rcvbuf)
-	{
-		// HACK : dont know why but if dont set RCVBUF explicitly RCVBUF of accept()-ed socket can be very large. may be linux bug ?
-		int v,sz;
-		sz=sizeof(int);
-		if (!getsockopt(listen_fd,SOL_SOCKET,SO_RCVBUF,&v,&sz))
+		if ((list[i].salisten.ss_family == AF_INET6) && setsockopt(listen_fd[i], IPPROTO_IPV6, IPV6_V6ONLY, &list[i].ipv6_only, sizeof(int)) == -1)
 		{
-			v/=2;
-			setsockopt(listen_fd,SOL_SOCKET,SO_RCVBUF,&v,sizeof(int));
+			perror("setsockopt (IPV6_ONLY): ");
+			goto exiterr;
 		}
-	}
 
-	if (bind(listen_fd, (struct sockaddr *)&salisten, salisten_len) == -1) {
-		perror("bind: ");
-		goto exiterr;
+		if (setsockopt(listen_fd[i], SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
+		{
+			perror("setsockopt (SO_REUSEADDR): ");
+			goto exiterr;
+		}
+	
+		//Mark that this socket can be used for transparent proxying
+		//This allows the socket to accept connections for non-local IPs
+		if (params.proxy_type==CONN_TYPE_TRANSPARENT)
+		{
+			if (setsockopt(listen_fd[i], SOL_IP, IP_TRANSPARENT, &yes, sizeof(yes)) == -1)
+			{
+				perror("setsockopt (IP_TRANSPARENT): ");
+				goto exiterr;
+			}
+		}
+
+		if (!set_socket_buffers(listen_fd[i], params.local_rcvbuf, params.local_sndbuf))
+			goto exiterr;
+		if (!params.local_rcvbuf)
+		{
+			// HACK : dont know why but if dont set RCVBUF explicitly RCVBUF of accept()-ed socket can be very large. may be linux bug ?
+			int v,sz;
+			sz=sizeof(int);
+			if (!getsockopt(listen_fd[i],SOL_SOCKET,SO_RCVBUF,&v,&sz))
+			{
+				v/=2;
+				setsockopt(listen_fd[i],SOL_SOCKET,SO_RCVBUF,&v,sizeof(int));
+			}
+		}
+
+		if (bind(listen_fd[i], (struct sockaddr *)&list[i].salisten, list[i].salisten_len) == -1) {
+			perror("bind: ");
+			goto exiterr;
+		}
+		if (listen(listen_fd[i], BACKLOG) == -1) {
+			perror("listen: ");
+			goto exiterr;
+		}
 	}
 
 	set_ulimit();
@@ -700,13 +759,7 @@ int main(int argc, char *argv[]) {
 		goto exiterr;
 	}
 
-	fprintf(stderr,"Running as UID=%u GID=%u\n",getuid(),getgid());
-
-	if (listen(listen_fd, BACKLOG) == -1) {
-		perror("listen: ");
-		goto exiterr;
-	}
-
+	printf("Running as UID=%u GID=%u\n",getuid(),getgid());
 
 
 	//splice() causes the process to receive the SIGPIPE-signal if one part (for
@@ -717,23 +770,21 @@ int main(int argc, char *argv[]) {
 		goto exiterr;
 	}
 
-	fprintf(stderr, "Will listen to port %d\n", params.port);
-	fprintf(stderr, params.proxy_type==CONN_TYPE_SOCKS ? "socks mode\n" : "transparent proxy mode\n");
-	if (!params.tamper) fprintf(stderr, "TCP proxy mode (no tampering)\n");
+	printf(params.proxy_type==CONN_TYPE_SOCKS ? "socks mode\n" : "transparent proxy mode\n");
+	if (!params.tamper) printf("TCP proxy mode (no tampering)\n");
 
 	signal(SIGHUP, onhup); 
 
-	retval = event_loop(listen_fd);
+	retval = event_loop(listen_fd,params.binds_last+1);
 	
-	close(listen_fd);
+	for(i=0;i<=params.binds_last;i++) if (listen_fd[i]!=-1) close(listen_fd[i]);
 	cleanup_params();
 
-	fprintf(stderr, "Will exit\n");
-
-	return retval < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+	exit_v = retval < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+	printf("Exiting\n");
 	
 exiterr:
-	if (listen_fd!=-1) close(listen_fd);
+	for(i=0;i<=params.binds_last;i++) if (listen_fd[i]!=-1) close(listen_fd[i]);
 	cleanup_params();
-	return EXIT_FAILURE;
+	return exit_v;
 }

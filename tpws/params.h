@@ -7,19 +7,27 @@
 
 enum splithttpreq { split_none = 0, split_method, split_host };
 
-struct params_s
+#define MAX_BINDS	32
+struct bind_s
 {
 	char bindaddr[64],bindiface[IF_NAMESIZE];
 	bool bind_if6;
 	bool bindll,bindll_force;
 	int bind_wait_ifup,bind_wait_ip,bind_wait_ip_ll;
+};
+
+struct params_s
+{
+	struct bind_s binds[MAX_BINDS];
+	int binds_last;
+	uint16_t port;
+
 	uint8_t proxy_type;
 	bool no_resolve;
 	bool skip_nodelay;
 	uid_t uid;
 	gid_t gid;
 	bool daemon;
-	uint16_t port;
 	int maxconn,maxfiles,max_orphan_time;
 	int local_rcvbuf,local_sndbuf,remote_rcvbuf,remote_sndbuf;
 

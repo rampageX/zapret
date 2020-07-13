@@ -18,10 +18,12 @@ TPPORT=1188
 TPWS="$ZAPRET_BASE/tpws/tpws"
 HOSTLIST="$ZAPRET_BASE/ipset/zapret-hosts.txt.gz"
 [ -f "$HOSTLIST" ] || HOSTLIST="$ZAPRET_BASE/ipset/zapret-hosts-user.txt"
-TPWS_OPT_BASE="--user=$WS_USER --bind-addr=127.0.0.1 --port=$TPPORT"
-TPWS_OPT_BASE6="--user=$WS_USER --bind-addr=::1 --port=$TPPORT"
+
+TPWS_OPT_BASE="--user=$WS_USER --port=$TPPORT"
+TPWS_OPT_BASE4="--bind-addr=127.0.0.1"
+TPWS_OPT_BASE6="--bind-addr=::1"
 # first wait for lan to ifup, then wait for bind-wait-ip-linklocal seconds for link local address and bind-wait-ip for any ipv6 as the worst case
-TPWS_OPT_BASE6_PRE="--user=$WS_USER --bind-linklocal=prefer --bind-wait-ifup=30 --bind-wait-ip=30 --bind-wait-ip-linklocal=3 --port=$TPPORT"
+TPWS_OPT_BASE6_PRE="--bind-linklocal=prefer --bind-wait-ifup=30 --bind-wait-ip=30 --bind-wait-ip-linklocal=3"
 
 [ -n "$IFACE_WAN" ] && IPT_OWAN="-o $IFACE_WAN"
 [ -n "$IFACE_WAN" ] && IPT_IWAN="-i $IFACE_WAN"
@@ -346,11 +348,18 @@ do_tpws()
 	# $3 : daemon args
 
 	[ "$1" = "1" ] && prepare_tpws
-	[ "$DISABLE_IPV4" = "1" ] || do_daemon $1 $2 $TPWS "$TPWS_OPT_BASE $3"
+
+	[ "$DISABLE_IPV4" = "1" ] && [ "$DISABLE_IPV6" = "1" ] && return 0
+
+	local OPT="$TPWS_OPT_BASE"
+
+	[ "$DISABLE_IPV4" = "1" ] || OPT="$OPT $TPWS_OPT_BASE4"
 	[ "$DISABLE_IPV6" = "1" ] || {
-		do_daemon $1 $((60+$2)) $TPWS "$TPWS_OPT_BASE6 $3"
-		[ -n "$IFACE_LAN" ] && do_daemon $1 $((660+$2)) $TPWS "$TPWS_OPT_BASE6_PRE --bind-iface6=$IFACE_LAN $3"
+		OPT="$OPT $TPWS_OPT_BASE6"
+		[ -n "$IFACE_LAN" ] && OPT="$OPT --bind-iface6=$IFACE_LAN $TPWS_OPT_BASE6_PRE"
 	}
+
+	do_daemon $1 $2 $TPWS "$OPT $3"
 }
 do_nfqws()
 {

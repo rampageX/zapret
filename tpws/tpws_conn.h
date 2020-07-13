@@ -11,7 +11,7 @@
 #define DEFAULT_MAX_CONN	512
 #define DEFAULT_MAX_ORPHAN_TIME	5
 
-int event_loop(int listen_fd);
+int event_loop(int *listen_fd, size_t listen_fd_ct);
 
 //Three different states of a connection
 enum{
@@ -40,6 +40,7 @@ typedef uint8_t conn_type_t;
 
 struct tproxy_conn
 {
+	bool listener; // true - listening socket. false = connecion socket
 	bool remote; // false - accepted, true - connected
 	int efd; // epoll fd
 	int fd;

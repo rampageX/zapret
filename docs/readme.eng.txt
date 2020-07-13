@@ -227,7 +227,7 @@ tpws
 tpws is transparent proxy.
 
  --debug=0|1|2			; 0(default)=silent 1=verbose 2=debug
- --bind-addr=<ipv4_addr>|<ipv6_addr>
+ --bind-addr=<v4_addr>|<v6_addr>; for v6 link locals append %interface_name : fe80::1%br-lan
  --bind-iface4=<interface_name> ; bind to the first ipv4 addr of interface
  --bind-iface6=<interface_name> ; bind to the first ipv6 addr of interface
  --bind-linklocal=prefer|force  ; prefer or force ipv6 link local
@@ -271,9 +271,13 @@ The manipulation parameters can be combined in any way.
 split-http-req takes precedence over split-pos for http reqs.
 split-pos works by default only on http and TLS ClientHello. use --split-any-protocol to act on any packet
 
-tpws can bind only to one ip or to all at once.
-To bind to all ipv4, specify "0.0.0.0", to all ipv6 - "::". Without parameters, tpws bind to all ipv4 and ipv6.
-The --bind-wait * parameters can help in situations where you need to get IP from the interface, but it is not there yet, it is not raised
+tpws can bind to multiple interfaces and IP addresses (up to 32).
+Port number is always the same.
+Parameters --bind-iface* и --bind-addr create new bind.
+Other parameters --bind-* are related to the last bind.
+To bind to all ipv4 specify --bind-addr "0.0.0.0", all ipv6 - "::". --bind-addr="" - mean bind to all ipv4 and ipv6.
+If no binds are specified default bind to all ipv4 and ipv6 addresses is created.
+The --bind-wait* parameters can help in situations where you need to get IP from the interface, but it is not there yet, it is not raised
 or not configured.
 In different systems, ifup events are caught in different ways and do not guarantee that the interface has already received an IP address of a certain type.
 In the general case, there is no single mechanism to hang oneself on an event of the type "link local address appeared on the X interface."
@@ -362,15 +366,13 @@ tpws_ipset_https - use tpws on http and https, targets are filtered by ipset "za
 tpws_all - use tpws on all http
 tpws_all_https - use tpws on all http and https
 tpws_hostlist - same as tpws_all but touch only domains from the hostlist
-tpws_hostlist_https - same as tpws_all_https but touch only domains from the hostlist
 
 ipset - only fill ipset. futher actions depend on your own code
 
-tpws options :
+Its possible to change manipulation options used by tpws separately for http and https :
 
-TPWS_OPT="--hostspell=HOST --split-http-req=method --split-pos=3"
-
-Single instance is used for both http and https.
+TPWS_OPT_HTTP="--hostspell=HOST --split-http-req=method"
+TPWS_OPT_HTTPS="--split-pos=3"
 
 nfqws options for DPI desync attack:
 

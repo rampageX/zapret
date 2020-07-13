@@ -1213,15 +1213,19 @@ static void conn_close_with_partner_check(struct tailhead *conn_list, struct tai
 	}
 }
 
-int event_loop(int listen_fd)
+int event_loop(int *listen_fd, size_t listen_fd_ct)
 {
 	int retval = 0, num_events = 0;
 	int tmp_fd = 0; //Used to temporarily hold the accepted file descriptor
 	tproxy_conn_t *conn = NULL;
-	int efd, i;
+	int efd=0, i;
 	struct epoll_event ev, events[MAX_EPOLL_EVENTS];
 	struct tailhead conn_list, close_list;
 	time_t tm,last_timeout_check=0;
+	tproxy_conn_t *listen_conn = NULL;
+	size_t sct;
+
+	if (!listen_fd_ct) return -1;
 
 	legs_local = legs_remote = 0;
 	//Initialize queue (remember that TAILQ_HEAD just defines the struct)
@@ -1232,21 +1236,29 @@ int event_loop(int listen_fd)
 		perror("epoll_create");
 		return -1;
 	}
-	
-	//Start monitoring listen socket
-	memset(&ev, 0, sizeof(ev));
-	ev.events = EPOLLIN;
-	//There is only one listen socket, and I want to use ptr in order to have 
-	//easy access to the connections. So if ptr is NULL that means an event on
-	//listen socket.
-	ev.data.ptr = NULL;
-	if (epoll_ctl(efd, EPOLL_CTL_ADD, listen_fd, &ev) == -1) {
-		perror("epoll_ctl (listen socket)");
-		close(efd);
+
+	if (!(listen_conn=calloc(listen_fd_ct,sizeof(*listen_conn))))
+	{
+		perror("calloc listen_conn");
 		return -1;
 	}
+	
+	//Start monitoring listen sockets
+	memset(&ev, 0, sizeof(ev));
+	ev.events = EPOLLIN;
+	for(sct=0;sct<listen_fd_ct;sct++)
+	{
+		listen_conn[sct].listener = true;
+		listen_conn[sct].fd = listen_fd[sct];
+		ev.data.ptr = listen_conn + sct;
+		if (epoll_ctl(efd, EPOLL_CTL_ADD, listen_conn[sct].fd, &ev) == -1) {
+			perror("epoll_ctl (listen socket)");
+			retval = -1;
+			goto ex;
+		}
+	}
 
-	while (1)
+	for(;;)
 	{
 		DBGPRINT("epoll_wait")
 
@@ -1262,12 +1274,15 @@ int event_loop(int listen_fd)
 
 		for (i = 0; i < num_events; i++)
 		{
-			if (events[i].data.ptr == NULL)
+			conn = (tproxy_conn_t*)events[i].data.ptr;
+			conn->event_count++;
+
+			if (conn->listener)
 			{
-				DBGPRINT("\nEVENT mask %08X conn=NULL (accept)",events[i].events)
+				DBGPRINT("\nEVENT mask %08X fd=%d accept",events[i].events,conn->fd)
 
 				//Accept new connection
-				tmp_fd = accept4(listen_fd, NULL, 0, SOCK_NONBLOCK);
+				tmp_fd = accept4(conn->fd, NULL, 0, SOCK_NONBLOCK);
 				if (tmp_fd < 0)
 				{
 					fprintf(stderr, "Failed to accept connection\n");
@@ -1290,9 +1305,6 @@ int event_loop(int listen_fd)
 			}
 			else
 			{
-				conn = (tproxy_conn_t*)events[i].data.ptr;
-				conn->event_count++;
-
 				DBGPRINT("\nEVENT mask %08X fd=%d remote=%d fd_partner=%d",events[i].events,conn->fd,conn->remote,conn_partner_alive(conn) ? conn->partner->fd : 0)
 
 				if (conn->state != CONN_CLOSED)
@@ -1372,7 +1384,8 @@ int event_loop(int listen_fd)
 		fflush(stderr); fflush(stdout); // for console messages
 	}
 
-	close(efd);
-
+ex:
+	if (efd) close(efd);
+	if (listen_conn) free(listen_conn);
 	return retval;
 }

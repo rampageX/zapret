@@ -157,3 +157,8 @@ v31
 
 nfqws : DPI desync attack modes : disorder,disorder2,split,split2.
 nfqws : DPI desync fooling mode : badseq.  multiple modes supported
+
+v32
+
+tpws : multiple binds
+init scripts : run only one instance of tpws in any case
