@@ -126,7 +126,7 @@ Offload включается через специальный target в iptable
 ip6tables работают почти точно так же, как и ipv4, но есть ряд важных нюансов.
 В DNAT следует брать адрес --to в квадратные скобки. Например :
 
- iptables -t nat -I OUTPUT -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to [::1]:1188
+ ip6tables -t nat -I OUTPUT -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to [::1]:1188
  
 Параметра route_localnet не существует для ipv6.
 DNAT на localhost (::1) возможен только в цепочке OUTPUT.

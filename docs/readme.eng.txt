@@ -89,7 +89,7 @@ ip6tables
 ip6tables work almost exactly the same way as ipv4, but there are a number of important nuances.
 In DNAT, you should take the address --to in square brackets. For example :
 
- iptables -t nat -I OUTPUT -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to [::1]:1188
+ ip6tables -t nat -I OUTPUT -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to [::1]:1188
 
 The route_localnet parameter does not exist for ipv6.
 DNAT to localhost (:: 1) is possible only in the OUTPUT chain.
