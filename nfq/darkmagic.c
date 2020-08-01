@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 uint32_t net32_add(uint32_t netorder_value, uint32_t cpuorder_increment)
 {
@@ -265,28 +266,115 @@ void extract_endpoints(const struct iphdr *iphdr,const struct ip6_hdr *ip6hdr,co
 	{
 		struct sockaddr_in *si = (struct sockaddr_in*)dst;
 		si->sin_family = AF_INET;
-		si->sin_port = tcphdr->dest;
+		si->sin_port = tcphdr ? tcphdr->dest : 0;
 		si->sin_addr.s_addr = iphdr->daddr;
 
 		si = (struct sockaddr_in*)src;
 		si->sin_family = AF_INET;
-		si->sin_port = tcphdr->source;
+		si->sin_port = tcphdr ? tcphdr->source : 0;
 		si->sin_addr.s_addr = iphdr->saddr;
 	}
 	else if (ip6hdr)
 	{
 		struct sockaddr_in6 *si = (struct sockaddr_in6*)dst;
 		si->sin6_family = AF_INET6;
-		si->sin6_port = tcphdr->dest;
+		si->sin6_port = tcphdr ? tcphdr->dest : 0;
 		si->sin6_addr = ip6hdr->ip6_dst;
 		si->sin6_flowinfo = 0;
 		si->sin6_scope_id = 0;
 
 		si = (struct sockaddr_in6*)src;
 		si->sin6_family = AF_INET6;
-		si->sin6_port = tcphdr->source;
+		si->sin6_port = tcphdr ? tcphdr->source : 0;
 		si->sin6_addr = ip6hdr->ip6_src;
 		si->sin6_flowinfo = 0;
 		si->sin6_scope_id = 0;
 	}
+}
+
+static const char *proto_name(uint8_t proto)
+{
+	switch(proto)
+	{
+		case IPPROTO_TCP:
+			return "tcp";
+		case IPPROTO_UDP:
+			return "udp";
+		case IPPROTO_ICMP:
+			return "icmp";
+		case IPPROTO_IGMP:
+			return "igmp";
+		case IPPROTO_ESP:
+			return "esp";
+		case IPPROTO_AH:
+			return "ah";
+		case IPPROTO_IPV6:
+			return "6in4";
+		case IPPROTO_SCTP:
+			return "sctp";
+		default:
+			return NULL;
+	}
+}
+static void str_proto_name(char *s, size_t s_len, uint8_t proto)
+{
+	const char *name = proto_name(proto);
+	if (name)
+		snprintf(s,s_len,"%s",name);
+	else
+		snprintf(s,s_len,"%u",proto);
+}
+
+static void str_srcdst_ip(char *s, size_t s_len, const void *saddr,const void *daddr)
+{
+	char s_ip[16],d_ip[16];
+	*s_ip=*d_ip=0;
+	inet_ntop(AF_INET, saddr, s_ip, sizeof(s_ip));
+	inet_ntop(AF_INET, daddr, d_ip, sizeof(d_ip));
+	snprintf(s,s_len,"%s => %s",s_ip,d_ip);
+}
+static void str_iphdr(char *s, size_t s_len, const struct iphdr *iphdr)
+{
+	char ss[64],s_proto[16];
+	str_srcdst_ip(ss,sizeof(ss),&iphdr->saddr,&iphdr->daddr);
+	str_proto_name(s_proto,sizeof(s_proto),iphdr->protocol);
+	snprintf(s,s_len,"%s proto=%s",ss,s_proto);
+}
+void print_iphdr(const struct iphdr *iphdr)
+{
+	char s[64];
+	str_iphdr(s,sizeof(s),iphdr);
+	printf("%s",s);
+}
+static void str_srcdst_ip6(char *s, size_t s_len, const void *saddr,const void *daddr)
+{
+	char s_ip[40],d_ip[40];
+	*s_ip=*d_ip=0;
+	inet_ntop(AF_INET6, saddr, s_ip, sizeof(s_ip));
+	inet_ntop(AF_INET6, daddr, d_ip, sizeof(d_ip));
+	snprintf(s,s_len,"%s => %s",s_ip,d_ip);
+}
+static void str_ip6hdr(char *s, size_t s_len, const struct ip6_hdr *ip6hdr, uint8_t proto)
+{
+	char ss[128],s_proto[16];
+	str_srcdst_ip6(ss,sizeof(ss),&ip6hdr->ip6_src,&ip6hdr->ip6_dst);
+	str_proto_name(s_proto,sizeof(s_proto),proto);
+	snprintf(s,s_len,"%s proto=%s",ss,s_proto);
+}
+void print_ip6hdr(const struct ip6_hdr *ip6hdr, uint8_t proto)
+{
+	char s[128];
+	str_ip6hdr(s,sizeof(s),ip6hdr,proto);
+	printf("%s",s);
+}
+
+static void str_tcphdr(char *s, size_t s_len, const struct tcphdr *tcphdr)
+{
+	snprintf(s,s_len,"sport=%u dport=%u",htons(tcphdr->source),htons(tcphdr->dest));
+}
+void print_tcphdr(const struct tcphdr *tcphdr)
+{
+	char s[32];
+	str_tcphdr(s,sizeof(s),tcphdr);
+	printf("%s",s);
 }

@@ -181,11 +181,21 @@ static packet_process_result processPacketData(uint8_t *data_pkt, size_t len_pkt
 		iphdr = (struct iphdr *) data;
 		proto = iphdr->protocol;
 		proto_skip_ipv4(&data, &len);
+		if (params.debug)
+		{
+			printf("IP4: ");
+			print_iphdr(iphdr);
+		}
 	}
 	else if (proto_check_ipv6(data, len))
 	{
 		ip6hdr = (struct ip6_hdr *) data;
 		proto_skip_ipv6(&data, &len, &proto);
+		if (params.debug)
+		{
+			printf("IP6: ");
+			print_ip6hdr(ip6hdr, proto);
+		}
 	}
 	else
 	{
@@ -198,7 +208,13 @@ static packet_process_result processPacketData(uint8_t *data_pkt, size_t len_pkt
 		tcphdr = (struct tcphdr *) data;
 		len_tcp = len;
 		proto_skip_tcp(&data, &len);
-		//DLOG("got TCP packet. payload_len=%d\n",len)
+
+		if (params.debug)
+		{
+			printf(" ");
+			print_tcphdr(tcphdr);
+			printf("\n");
+		}
 
 		if (modify_tcp_packet(data, len, tcphdr))
 			res = modify;
@@ -207,6 +223,11 @@ static packet_process_result processPacketData(uint8_t *data_pkt, size_t len_pkt
 		res = (res2==pass && res==modify) ? modify : res2;
 		if (res==modify) tcp_fix_checksum(tcphdr,len_tcp,iphdr,ip6hdr);
 	}
+	else
+	{
+		if (params.debug) printf("\n");
+	}
+
 	return res;
 }
 

@@ -10,7 +10,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-
 // returns netorder value
 uint32_t net32_add(uint32_t netorder_value, uint32_t cpuorder_increment);
 
@@ -60,3 +59,7 @@ uint32_t *tcp_find_timestamps(struct tcphdr *tcp);
 bool rawsend(struct sockaddr* dst,uint32_t fwmark,const void *data,size_t len);
 // cleans up socket autocreated by rawsend
 void rawsend_cleanup();
+
+void print_iphdr(const struct iphdr *iphdr);
+void print_ip6hdr(const struct ip6_hdr *ip6hdr, uint8_t proto);
+void print_tcphdr(const struct tcphdr *tcphdr);

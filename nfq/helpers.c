@@ -16,7 +16,7 @@ void print_sockaddr(const struct sockaddr *sa)
 		break;
 	case AF_INET6:
 		if (inet_ntop(sa->sa_family, &((struct sockaddr_in6*)sa)->sin6_addr, str, sizeof(str)))
-			printf("%s:%d", str, ntohs(((struct sockaddr_in6*)sa)->sin6_port));
+			printf("[%s]:%d", str, ntohs(((struct sockaddr_in6*)sa)->sin6_port));
 		break;
 	default:
 		printf("UNKNOWN_FAMILY_%d", sa->sa_family);
