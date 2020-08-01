@@ -370,11 +370,19 @@ void print_ip6hdr(const struct ip6_hdr *ip6hdr, uint8_t proto)
 
 static void str_tcphdr(char *s, size_t s_len, const struct tcphdr *tcphdr)
 {
-	snprintf(s,s_len,"sport=%u dport=%u",htons(tcphdr->source),htons(tcphdr->dest));
+	char flags[7],*f=flags;
+	if (tcphdr->syn) *f++='S';
+	if (tcphdr->ack) *f++='A';
+	if (tcphdr->rst) *f++='R';
+	if (tcphdr->fin) *f++='F';
+	if (tcphdr->psh) *f++='P';
+	if (tcphdr->urg) *f++='U';
+	*f=0;
+	snprintf(s,s_len,"sport=%u dport=%u flags=%s seq=%u ack_seq=%u",htons(tcphdr->source),htons(tcphdr->dest),flags,htonl(tcphdr->seq),htonl(tcphdr->ack_seq));
 }
 void print_tcphdr(const struct tcphdr *tcphdr)
 {
-	char s[32];
+	char s[80];
 	str_tcphdr(s,sizeof(s),tcphdr);
 	printf("%s",s);
 }
