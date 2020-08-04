@@ -126,7 +126,7 @@ Offload включается через специальный target в iptable
 ip6tables работают почти точно так же, как и ipv4, но есть ряд важных нюансов.
 В DNAT следует брать адрес --to в квадратные скобки. Например :
 
- ip6tables -t nat -I OUTPUT -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to [::1]:1188
+ ip6tables -t nat -I OUTPUT -o <внешний_интерфейс> -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to [::1]:1188
  
 Параметра route_localnet не существует для ipv6.
 DNAT на localhost (::1) возможен только в цепочке OUTPUT.
@@ -257,13 +257,13 @@ DPI может отстать от потока, если ClientHello его у�
 
 iptables для задействования атаки на первый пакет данных :
 
-iptables -t mangle -I POSTROUTING -p tcp -m multiport --dports 80,443 -m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4 -m mark ! --mark 0x40000000/0x40000000 -j NFQUEUE --queue-num 200 --queue-bypass
+iptables -t mangle -I POSTROUTING -o <внешний_интерфейс> -p tcp -m multiport --dports 80,443 -m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4 -m mark ! --mark 0x40000000/0x40000000 -j NFQUEUE --queue-num 200 --queue-bypass
 
 Этот вариант применяем, когда DPI не следит за всеми запросами http внутри keep-alive сессии.
 Если следит, направляем только первый пакет от https и все пакеты от http :
 
-iptables -t mangle -I POSTROUTING -p tcp --dport 443 -m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4 -m mark ! --mark 0x40000000/0x40000000 -j NFQUEUE --queue-num 200 --queue-bypass
-iptables -t mangle -I POSTROUTING -p tcp --dport 80 -m mark ! --mark 0x40000000/0x40000000 -j NFQUEUE --queue-num 200 --queue-bypass
+iptables -t mangle -I POSTROUTING -o <внешний_интерфейс> -p tcp --dport 443 -m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4 -m mark ! --mark 0x40000000/0x40000000 -j NFQUEUE --queue-num 200 --queue-bypass
+iptables -t mangle -I POSTROUTING -o <внешний_интерфейс> -p tcp --dport 80 -m mark ! --mark 0x40000000/0x40000000 -j NFQUEUE --queue-num 200 --queue-bypass
 
 mark нужен, чтобы сгенерированный поддельный пакет не попал опять к нам на обработку. nfqws выставляет fwmark при его отсылке.
 nfqws способен самостоятельно различать помеченные пакеты, фильтр в iptables по mark нужен только для увеличения скорости.
