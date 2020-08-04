@@ -366,8 +366,10 @@ tpws_ipset_https - use tpws on http and https, targets are filtered by ipset "za
 tpws_all - use tpws on all http
 tpws_all_https - use tpws on all http and https
 tpws_hostlist - same as tpws_all but touch only domains from the hostlist
+tpws_hostlist_https - same as tpws_all_https but touch only domains from the hostlist
 
 ipset - only fill ipset. futher actions depend on your own code
+custom - use custom script to run daemons and fill firewall rules. see example in init.d
 
 Its possible to change manipulation options used by tpws separately for http and https :
 
