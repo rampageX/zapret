@@ -591,7 +591,7 @@ check_prerequisites_openwrt()
 		}
 	fi
 	
-	[ -x "/usr/bin/gzip" ] || {
+	[ "$(readlink /bin/gzip)" = 'busybox' ] && {
 		echo your system uses default busybox gzip. its several times slower than gnu gzip.
 		echo ip/host list scripts will run much faster with gnu gzip
 		echo installer can install gnu gzip but it requires about 100 Kb space
@@ -603,7 +603,7 @@ check_prerequisites_openwrt()
 			opkg install gzip
 		fi
 	}
-	[ -x "/usr/bin/grep" ] || {
+	[ "$(readlink /bin/grep)" = 'busybox' ] && {
 		echo your system uses default busybox grep. its damn infinite slow with -f option
 		echo get_combined.sh will be severely impacted
 		echo installer can install gnu grep but it requires about 0.5 Mb space
