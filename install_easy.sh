@@ -275,7 +275,7 @@ ask_config_offload()
 	is_flow_offload_avail && {
 		echo
 		echo flow offloading can greatly increase speed on slow devices and high speed links \(usually 150+ mbits\)
-		echo unfortuantely its not compatible with most nfqws options. nfqws traffic must be excempted from flow offloading.
+		echo unfortuantely its not compatible with most nfqws options. nfqws traffic must be exempted from flow offloading.
 		echo donttouch = disable system flow offloading setting if nfqws mode was selected, dont touch it otherwise and dont configure selective flow offloading
 		echo none = always disable system flow offloading setting and dont configure selective flow offloading
 		echo software = always disable system flow offloading setting and configure selective software flow offloading

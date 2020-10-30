@@ -289,17 +289,17 @@ apply_flow_offloading_enable_rule()
 	echo enabling ipv${1:-4} flow offloading : $i
 	ip$1tables -A $i
 }
-apply_flow_offloading_excempt_rule()
+apply_flow_offloading_exempt_rule()
 {
 	# $1 = '' for ipv4, '6' for ipv6
 	local i v
 	v=$1
 	shift
-	i="forwarding_rule_zapret $@ -m comment --comment zapret_traffic_offloading_excemption -j RETURN"
-	echo applying ipv${v:-4} flow offloading excemption : $i
+	i="forwarding_rule_zapret $@ -m comment --comment zapret_traffic_offloading_exemption -j RETURN"
+	echo applying ipv${v:-4} flow offloading exemption : $i
 	ip${v}tables -A $i
 }
-flow_offloading_excempt_v()
+flow_offloading_exempt_v()
 {
 	# $1 = '' for ipv4, '6' for ipv6
 
@@ -314,12 +314,12 @@ flow_offloading_excempt_v()
 
 		list_nfqws_rules $1 |
 		while read rule; do
-			apply_flow_offloading_excempt_rule "$1" $rule
+			apply_flow_offloading_exempt_rule "$1" $rule
 		done
 
 		list_nfqws_rules $1 | grep -v "connbytes" | reverse_nfqws_rule |
 		while read rule; do
-			apply_flow_offloading_excempt_rule "$1" $rule
+			apply_flow_offloading_exempt_rule "$1" $rule
 		done
 	
 		apply_flow_offloading_enable_rule $1
@@ -329,10 +329,10 @@ flow_offloading_excempt_v()
 
 	return 0
 }
-flow_offloading_excempt()
+flow_offloading_exempt()
 {
-	[ "$DISABLE_IPV4" = "1" ] || flow_offloading_excempt_v
-	[ "$DISABLE_IPV6" = "1" ] || flow_offloading_excempt_v 6
+	[ "$DISABLE_IPV4" = "1" ] || flow_offloading_exempt_v
+	[ "$DISABLE_IPV6" = "1" ] || flow_offloading_exempt_v 6
 }
 
 
@@ -371,5 +371,5 @@ zapret_apply_firewall()
 			;;
 	esac
 
-	flow_offloading_excempt
+	flow_offloading_exempt
 }
