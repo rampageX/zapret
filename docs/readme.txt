@@ -116,7 +116,7 @@ iptables -t mangle -I POSTROUTING -o <внешний_интерфейс> -p tcp 
 Offload включается через специальный target в iptables "FLOWOFFLOAD". Не обязательно пропускать весь трафик через offload.
 Можно исключить из offload соединения, которые должны попасть на tpws или nfqws.
 openwrt не предусматривает выборочного управления offload.
-Поэтому скрипты zapret поддерживают свою систему выборочным управлением offload в openwrt.
+Поэтому скрипты zapret поддерживают свою систему выборочного управления offload в openwrt.
 
 
 Особенности применения ip6tables
