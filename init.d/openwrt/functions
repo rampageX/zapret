@@ -274,7 +274,7 @@ is_flow_offload_avail()
 list_nfqws_rules()
 {
 	# $1 = '' for ipv4, '6' for ipv6
-	ip$1tables -S POSTROUTING -t mangle  | grep "NFQUEUE --queue-num $QNUM"  | sed -re 's/^-A POSTROUTING (.*) -j NFQUEUE.*$/\1/' -e "s/-m mark ! --mark $DESYNC_MARK\/$DESYNC_MARK//"
+	ip$1tables -S POSTROUTING -t mangle  | grep "NFQUEUE --queue-num $QNUM --queue-bypass"  | sed -re 's/^-A POSTROUTING (.*) -j NFQUEUE.*$/\1/' -e "s/-m mark ! --mark $DESYNC_MARK\/$DESYNC_MARK//"
 }
 reverse_nfqws_rule()
 {
@@ -299,7 +299,6 @@ apply_flow_offloading_excempt_rule()
 	echo applying ipv${v:-4$v} flow offloading excemption : $i
 	ip${v}tables -A $i
 }
-
 flow_offloading_excempt_v()
 {
 	# $1 = '' for ipv4, '6' for ipv6
@@ -335,6 +334,7 @@ flow_offloading_excempt()
 	[ "$DISABLE_IPV4" = "1" ] || flow_offloading_excempt_v
 	[ "$DISABLE_IPV6" = "1" ] || flow_offloading_excempt_v 6
 }
+
 
 zapret_apply_firewall()
 {
