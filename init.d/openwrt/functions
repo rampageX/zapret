@@ -286,7 +286,7 @@ apply_flow_offloading_enable_rule()
 	local i off='-j FLOWOFFLOAD'
 	[ "$FLOWOFFLOAD" = "hardware" ] && off="$off --hw"
 	i="forwarding_rule_zapret -m comment --comment zapret_traffic_offloading_enable -m conntrack --ctstate RELATED,ESTABLISHED $off"
-	echo enabling ipv${1:-4$1} flow offloading : $i
+	echo enabling ipv${1:-4} flow offloading : $i
 	ip$1tables -A $i
 }
 apply_flow_offloading_excempt_rule()
@@ -296,7 +296,7 @@ apply_flow_offloading_excempt_rule()
 	v=$1
 	shift
 	i="forwarding_rule_zapret $@ -m comment --comment zapret_traffic_offloading_excemption -j RETURN"
-	echo applying ipv${v:-4$v} flow offloading excemption : $i
+	echo applying ipv${v:-4} flow offloading excemption : $i
 	ip${v}tables -A $i
 }
 flow_offloading_excempt_v()
