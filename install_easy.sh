@@ -216,6 +216,7 @@ write_config_var()
 }
 select_mode()
 {
+	echo
 	echo select MODE :
 	ask_list MODE "tpws_ipset tpws_ipset_https tpws_all tpws_all_https tpws_hostlist tpws_hostlist_https nfqws_all_desync nfqws_ipset_desync nfqws_hostlist_desync ipset custom" tpws_ipset_https && write_config_var MODE
 }
@@ -225,6 +226,7 @@ select_getlist()
 	[ "$MODE" = "custom" ] && return
 
 	if [ "${MODE%hostlist*}" != "$MODE" ] || [ "${MODE%ipset*}" != "$MODE" ]; then
+		echo
 		if ask_yes_no Y "do you want to auto download ip/host list"; then
 			if [ "${MODE%hostlist*}" != "$MODE" ] ; then
 				local GL_OLD=$GETLIST
@@ -247,6 +249,7 @@ select_ipv6()
 
 	[ "$DISABLE_IPV6" != '1' ] && T=Y
 	local old6=$DISABLE_IPV6
+	echo
 	if ask_yes_no $T "enable ipv6 support"; then
 		DISABLE_IPV6=0
 	else
@@ -267,6 +270,21 @@ ask_iface()
 	ask_list $1 "$(ls /sys/class/net)" && write_config_var $1
 }
 
+ask_config_offload()
+{
+	is_flow_offload_avail && {
+		echo
+		echo flow offloading can greatly increase speed on slow devices and high speed links \(usually 150+ mbits\)
+		echo unfortuantely its not compatible with most nfqws options. nfqws traffic must be excempted from flow offloading.
+		echo donttouch = disable system flow offloading setting if nfqws mode was selected, dont touch it otherwise and dont configure selective flow offloading
+		echo none = always disable system flow offloading setting and dont configure selective flow offloading
+		echo software = always disable system flow offloading setting and configure selective software flow offloading
+		echo hardware = always disable system flow offloading setting and configure selective hardware flow offloading
+		echo select flow offloading :
+		ask_list FLOWOFFLOAD "donttouch none software hardware" donttouch && write_config_var FLOWOFFLOAD
+	}
+}
+
 select_router_iface()
 {
 	local T=N
@@ -274,6 +292,7 @@ select_router_iface()
 	local old_lan=$IFACE_LAN
 	local old_wan=$IFACE_WAN
 
+	echo
 	if ask_yes_no $T "is this system a router"; then
 		echo LAN interface :
 		ask_iface IFACE_LAN
@@ -345,14 +364,17 @@ check_location()
 
 	# use inodes in case something is linked
 	[ -d "$ZAPRET_BASE" ] && [ $(get_dir_inode "$EXEDIR") = $(get_dir_inode "$ZAPRET_BASE") ] || {
+		echo
 		echo easy install is supported only from default location : $ZAPRET_BASE
 		echo currently its run from $EXEDIR
 		if ask_yes_no N "do you want the installer to copy it for you"; then
 			local keep=N
 			if [ -d "$ZAPRET_BASE" ]; then
+				echo
 				echo installer found existing $ZAPRET_BASE
 				echo directory needs to be replaced. config and custom scripts can be kept or replaced with clean version
 				if ask_yes_no N "do you want to delete all files there and copy this version"; then
+					echo
 					ask_yes_no Y "keep config, custom scripts and user lists" && keep=Y
 					[ "$keep" = "Y" ] && backup_restore_settings 1
 					rm -r "$ZAPRET_BASE"
@@ -598,6 +620,7 @@ check_prerequisites_openwrt()
 	fi
 	
 	is_linked_to_busybox gzip && {
+		echo
 		echo your system uses default busybox gzip. its several times slower than gnu gzip.
 		echo ip/host list scripts will run much faster with gnu gzip
 		echo installer can install gnu gzip but it requires about 100 Kb space
@@ -610,6 +633,7 @@ check_prerequisites_openwrt()
 		fi
 	}
 	is_linked_to_busybox grep && {
+		echo
 		echo your system uses default busybox grep. its damn infinite slow with -f option
 		echo get_combined.sh will be severely impacted
 		echo installer can install gnu grep but it requires about 0.5 Mb space
@@ -719,33 +743,54 @@ install_openwrt_iface_hook()
 	ln -fs "$OPENWRT_IFACE_HOOK" /etc/hotplug.d/iface
 }
 
+is_flow_offload_avail()
+{
+	# $1 = '' for ipv4, '6' for ipv6
+	grep -q FLOWOFFLOAD /proc/net/ip$1_tables_targets
+}
+
 deoffload_openwrt_firewall()
 {
 	echo \* checking flow offloading
 
+	is_flow_offload_avail || {
+		echo unavailable
+		return
+	}
+
 	local mod=0
 	local fo=$(uci -q get firewall.@defaults[0].flow_offloading)
-	local fo_hw=$(uci -q get firewall.@defaults[0].flow_offloading_hw)
-	
-	if [ "$fo_hw" = "1" ] ; then
-		echo hardware flow offloading detected. its incompatible with zapret. disabling
-		uci set firewall.@defaults[0].flow_offloading_hw=0
-		mod=1
-	else
-		echo hardware flow offloading disabled. ok
-	fi
-	if [ "$fo" = "1" ] ; then
-		echo -n "software flow offloading detected. "
-		if [ "${MODE%nfqws*}" != "$MODE" ]; then
-			echo its incompatible with nfqws tcp data tampering. disabling
-			uci set firewall.@defaults[0].flow_offloading=0
-			mod=1
-		else
-			echo its compatible with selected options. not disabling
-		fi
-	else
-		echo software flow offloading disabled. ok
-	fi
+
+	case $FLOWOFFLOAD in
+		donttouch)
+			if [ "$fo" = "1" ] ; then
+				echo -n "system wide flow offloading detected. "
+				if [ "${MODE%nfqws*}" != "$MODE" ]; then
+					echo its incompatible with nfqws tcp data tampering. disabling
+					uci set firewall.@defaults[0].flow_offloading=0
+					mod=1
+				else
+					if [ "$MODE" = "custom" ] ; then
+						echo custom mode selected !!! only you can decide whether flow offloading is compatible
+					else
+						echo its compatible with selected options. not disabling
+					fi
+				fi
+			else
+				echo system wide software flow offloading disabled. ok
+			fi
+			;;
+		*)
+			if [ "$fo" = "1" ] ; then
+				echo -n "system wide flow offloading detected. "
+				echo zapret will disable system wide offloading setting and add selective rules if required
+				uci set firewall.@defaults[0].flow_offloading=0
+				mod=1
+			else
+				echo system wide software flow offloading disabled. ok
+			fi
+	esac
+				
 	[ "$mod" = "1" ] && uci commit firewall
 }
 
@@ -787,6 +832,7 @@ install_openwrt()
 	check_prerequisites_openwrt
 	install_binaries
 	ask_config
+	ask_config_offload
 	install_sysv_init
 	# can be previous firewall preventing access
 	remove_openwrt_firewall

@@ -162,3 +162,7 @@ v32
 
 tpws : multiple binds
 init scripts : run only one instance of tpws in any case
+
+v33
+
+openwrt : flow offloading support

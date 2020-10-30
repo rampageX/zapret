@@ -18,7 +18,7 @@ IP2NET_OPT6="--prefix-length=56-64 --v6-threshold=5"
 # use tpws : tpws_ipset tpws_ipset_https tpws_all tpws_all_https tpws_hostlist
 # no daemon, just ipset : ipset
 # custom mode : custom . should modify init script and add your own code
-MODE=tpws_ipset
+MODE=tpws_ipset_https
 
 # CHOOSE NFQWS DAEMON OPTIONS for DPI desync mode. run "nfq/nfqws --help" for option list
 DESYNC_MARK=0x40000000
@@ -26,6 +26,9 @@ NFQWS_OPT_DESYNC="--dpi-desync=fake --dpi-desync-ttl=0 --dpi-desync-fooling=bads
 
 # CHOOSE TPWS DAEMON OPTIONS. run "tpws/tpws --help" for option list
 TPWS_OPT="--hostspell=HOST --split-http-req=method --split-pos=3"
+
+# openwrt only : donttouch,none,software,hardware
+FLOWOFFLOAD=donttouch
 
 # for routers based on desktop linux only. has not effect in openwrt.
 # CHOOSE LAN and WAN NETWORK INTERFACES
@@ -46,4 +49,4 @@ DISABLE_IPV6=1
 # select which init script will be used to get ip or host list
 # possible values : get_user.sh get_antizapret.sh get_combined.sh get_reestr.sh get_hostlist.sh
 # comment if not required
-GETLIST=get_reestr_ip.sh
+GETLIST=get_antifilter_ipsmart.sh

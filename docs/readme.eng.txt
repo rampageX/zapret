@@ -371,16 +371,22 @@ tpws_hostlist_https - same as tpws_all_https but touch only domains from the hos
 ipset - only fill ipset. futher actions depend on your own code
 custom - use custom script to run daemons and fill firewall rules. see example in init.d
 
-Its possible to change manipulation options used by tpws separately for http and https :
+Its possible to change manipulation options used by tpws :
 
-TPWS_OPT_HTTP="--hostspell=HOST --split-http-req=method"
-TPWS_OPT_HTTPS="--split-pos=3"
+TPWS_OPT="--hostspell=HOST --split-http-req=method --split-pos=3"
 
 nfqws options for DPI desync attack:
 
 DESYNC_MARK=0x40000000
 NFQWS_OPT_DESYNC="--dpi-desync=fake --dpi-desync-ttl=0 --dpi-desync-fooling=badsum --dpi-desync-fwmark=$DESYNC_MARK"
 
+flow offloading control (openwrt only)
+donttouch : disable system flow offloading setting if selected mode is incompatible with it, dont touch it otherwise and dont configure selective flow offloading
+none : always disable system flow offloading setting and dont configure selective flow offloading
+software : always disable system flow offloading setting and configure selective software flow offloading
+hardware : always disable system flow offloading setting and configure selective hardware flow offloading
+
+FLOWOFFLOAD=donttouch
 
 The GETLIST parameter tells the install_easy.sh installer which script to call
 to update the list of blocked ip or hosts.
