@@ -372,6 +372,37 @@ do_nfqws()
 }
 
 
+filter_apply_port_target()
+{
+	# $1 - var name of iptables filter
+	local f
+	if [ "$MODE_HTTP" = "1" ] && [ "$MODE_HTTPS" = "1" ]; then
+		f="-m multiport --dports 80,443"
+	elif [ "$MODE_HTTPS" = "1" ]; then
+		f="--dport 443"
+	elif [ "$MODE_HTTP" = "1" ]; then
+		f="--dport 80"
+	else
+		echo WARNING !!! HTTP and HTTPS are both disabled
+	fi
+	eval $1="\"\$$1 $f\""
+}
+filter_apply_ipset_target()
+{
+	# $1 - var name of ipv4 iptables filter
+	# $2 - var name of ipv6 iptables filter
+	if [ "$MODE_FILTER" = "ipset" ]; then
+		eval $1="\"\$$1 -m set --match-set zapret dst\""
+		eval $2="\"\$$2 -m set --match-set zapret6 dst\""
+	fi
+}
+filter_apply_hostlist_target()
+{
+	# $1 - var name of tpws or nfqws params
+	[ "$MODE_FILTER" = "hostlist" ] && eval $1="\"\$$1 --hostlist=$HOSTLIST\""
+}
+
+
 create_ipset()
 {
 	echo "Creating ipset"
@@ -383,38 +414,53 @@ create_ipset()
 zapret_do_firewall()
 {
 	# $1 - 1 - add, 0 - del
-	local rule
-	local synack="--tcp-flags SYN,ACK SYN,ACK"
-	local ipset_zapret="-m set --match-set zapret"
-	local ipset_zapret6="-m set --match-set zapret6"
-	local desync="-m multiport --dports 80,443 -m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4 -m mark ! --mark $DESYNC_MARK/$DESYNC_MARK"
+
+	local first_packet_only="-m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4"
+	local desync="-m mark ! --mark $DESYNC_MARK/$DESYNC_MARK"
+	local f4 f6
 
 	# always create ipsets. ip_exclude ipset is required
 	[ "$1" != "1" ] || create_ipset no-update
 
 	case "${MODE}" in
-	    tpws_hostlist|tpws_all)
-			fw_tpws $1 "--dport 80" "--dport 80" $TPPORT
+		tpws)
+			if [ ! "$MODE_HTTP" = "1" ] && [ ! "$MODE_HTTPS" = "1" ]; then
+				echo both http and https are disabled. not applying redirection.
+			else
+				filter_apply_port_target f4
+				f6=$f4
+				filter_apply_ipset_target f4 f6
+				fw_tpws $1 "$f4" "$f6" $TPPORT
+			fi
 			;;
-	    tpws_ipset)
-			[ "$1" = "1" ] && prepare_tpws
-			fw_tpws $1 "--dport 80 $ipset_zapret dst" "--dport 80 $ipset_zapret6 dst" $TPPORT
+	
+		nfqws)
+			if [ ! "$MODE_HTTP" = "1" ] && [ ! "$MODE_HTTPS" = "1" ]; then
+				echo both http and https are disabled. not applying redirection.
+			else
+				if [ "$MODE_HTTP_KEEPALIVE" = "1" ]; then
+					if [ "$MODE_HTTP" = "1" ]; then
+						f4="--dport 80"
+						f6=$f4
+						filter_apply_ipset_target f4 f6
+						fw_nfqws_post $1 "$f4 $desync" "$f6 $desync" $QNUM
+					fi
+					if [ "$MODE_HTTPS" = "1" ]; then
+						f4="--dport 443 $first_packet_only"
+						f6=$f4
+						filter_apply_ipset_target f4 f6
+						fw_nfqws_post $1 "$f4 $desync" "$f6 $desync" $QNUM
+					fi
+				else
+					filter_apply_port_target f4
+					f4="$f4 $first_packet_only"
+					f6=$f4
+					filter_apply_ipset_target f4 f6
+					fw_nfqws_post $1 "$f4 $desync" "$f6 $desync" $QNUM
+				fi
+			fi
 			;;
-	    tpws_ipset_https)
-			[ "$1" = "1" ] && prepare_tpws
-			fw_tpws $1 "-m multiport --dports 80,443 $ipset_zapret dst" "-m multiport --dports 80,443 $ipset_zapret6 dst" $TPPORT
-			;;
-	    tpws_all_https|tpws_hostlist_https)
-			[ "$1" = "1" ] && prepare_tpws
-			fw_tpws $1 "-m multiport --dports 80,443" "-m multiport --dports 80,443" $TPPORT
-			;;
-	    nfqws_all_desync|nfqws_hostlist_desync)
-			fw_nfqws_post $1 "$desync" "$desync" $QNUM
-			;;
-	    nfqws_ipset_desync)
-			fw_nfqws_post $1 "$desync $ipset_zapret dst" "$desync $ipset_zapret6 dst" $QNUM
-			;;
-	    custom)
+		custom)
 	    		existf zapret_custom_firewall && zapret_custom_firewall $1
 			;;
 	esac
@@ -431,21 +477,21 @@ zapret_unapply_firewall()
 zapret_do_daemons()
 {
 	# $1 - 1 - run, 0 - stop
-	
+
+	local opt
+
 	case "${MODE}" in
-	    tpws_hostlist|tpws_hostlist_https)
-			do_tpws $1 1 "$TPWS_OPT --hostlist=$HOSTLIST"
+		tpws)
+			opt="$TPWS_OPT"
+			filter_apply_hostlist_target opt
+			do_tpws $1 1 "$opt"
 			;;
-	    tpws_ipset|tpws_all|tpws_ipset_https|tpws_all_https)
-			do_tpws $1 1 "$TPWS_OPT"
+		nfqws)
+			opt="$NFQWS_OPT_DESYNC"
+			filter_apply_hostlist_target opt
+			do_nfqws $1 1 "$opt"
 			;;
-	    nfqws_ipset_desync|nfqws_all_desync)
-			do_nfqws $1 1 "$NFQWS_OPT_DESYNC"
-			;;
-	    nfqws_hostlist_desync)
-			do_nfqws $1 1 "$NFQWS_OPT_DESYNC --hostlist=$HOSTLIST"
-			;;
-	    custom)
+		custom)
 	    		existf zapret_custom_daemons && zapret_custom_daemons $1
 			;;
 	esac

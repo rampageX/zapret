@@ -55,7 +55,6 @@ run_tpws()
 		[ -n "$DEVICE" ] && OPT="$OPT --bind-iface6=$DEVICE $TPWS_OPT_BASE6_PRE"
 	}
 	run_daemon $1 $TPWS "$OPT $2"
-
 }
 stop_tpws()
 {
@@ -63,19 +62,26 @@ stop_tpws()
 }
 
 
+filter_apply_hostlist_target()
+{
+	# $1 - var name of tpws or nfqws params
+	[ "$MODE_FILTER" = "hostlist" ] && eval $1="\"\$$1 --hostlist=$HOSTLIST\""
+}
+
+
 start_service() {
+	local opt
+
 	case "${MODE}" in
-		tpws_hostlist|tpws_hostlist_https)
-			run_tpws 1 "$TPWS_OPT --hostlist=$HOSTLIST"
+		tpws)
+			opt="$TPWS_OPT"
+			filter_apply_hostlist_target opt
+			run_tpws 1 "$opt"
 			;;
-		tpws_ipset|tpws_all|tpws_ipset_https|tpws_all_https)
-			run_tpws 1 "$TPWS_OPT"
-			;;
-		nfqws_ipset_desync|nfqws_all_desync)
-			run_daemon 1 $NFQWS "$NFQWS_OPT_BASE $NFQWS_OPT_DESYNC"
-			;;
-		nfqws_hostlist_desync)
-			run_daemon 1 $NFQWS "$NFQWS_OPT_BASE $NFQWS_OPT_DESYNC --hostlist=$HOSTLIST"
+		nfqws)
+			opt="$NFQWS_OPT_BASE $NFQWS_OPT_DESYNC"
+			filter_apply_hostlist_target opt
+			run_daemon 1 $NFQWS "$opt"
 			;;
 		custom)
 	    		existf zapret_custom_daemons && zapret_custom_daemons $1

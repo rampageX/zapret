@@ -258,6 +258,31 @@ fw_tpws()
  fw_tpws6 "$2" $3
 }
 
+filter_apply_port_target()
+{
+	# $1 - var name of iptables filter
+	local f
+	if [ "$MODE_HTTP" = "1" ] && [ "$MODE_HTTPS" = "1" ]; then
+		f="-m multiport --dports 80,443"
+	elif [ "$MODE_HTTPS" = "1" ]; then
+		f="--dport 443"
+	elif [ "$MODE_HTTP" = "1" ]; then
+		f="--dport 80"
+	else
+		echo WARNING !!! HTTP and HTTPS are both disabled
+	fi
+	eval $1="\"\$$1 $f\""
+}
+filter_apply_ipset_target()
+{
+	# $1 - var name of ipv4 iptables filter
+	# $2 - var name of ipv6 iptables filter
+	if [ "$MODE_FILTER" = "ipset" ]; then
+		eval $1="\"\$$1 -m set --match-set zapret dst\""
+		eval $2="\"\$$2 -m set --match-set zapret6 dst\""
+	fi
+}
+
 
 create_ipset()
 {
@@ -278,7 +303,7 @@ list_nfqws_rules()
 }
 reverse_nfqws_rule()
 {
-	sed -e 's/-o /-i /' -e 's/--dport /--sport /' -e 's/--dports /--sports /' -e 's/ dst$/ src$/' -e 's/ dst / src /'
+	sed -e 's/-o /-i /' -e 's/--dport /--sport /' -e 's/--dports /--sports /' -e 's/ dst$/ src/' -e 's/ dst / src /'
 }
 apply_flow_offloading_enable_rule()
 {
@@ -338,35 +363,52 @@ flow_offloading_exempt()
 
 zapret_apply_firewall()
 {
-	local rule
-	local synack="--tcp-flags SYN,ACK SYN,ACK"
-	local ipset_zapret="-m set --match-set zapret"
-	local ipset_zapret6="-m set --match-set zapret6"
-	local desync="-m multiport --dports 80,443 -m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4 -m mark ! --mark $DESYNC_MARK/$DESYNC_MARK"
+	local first_packet_only="-m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4"
+	local desync="-m mark ! --mark $DESYNC_MARK/$DESYNC_MARK"
+	local f4 f6
 
 	# always create ipsets. ip_exclude ipset is required
 	create_ipset no-update
 
 	case "${MODE}" in
-	    tpws_hostlist|tpws_all)
-			fw_tpws "--dport 80" "--dport 80" $TPPORT
+		tpws)
+			if [ ! "$MODE_HTTP" = "1" ] && [ ! "$MODE_HTTPS" = "1" ]; then
+				echo both http and https are disabled. not applying redirection.
+			else
+				filter_apply_port_target f4
+				f6=$f4
+				filter_apply_ipset_target f4 f6
+				fw_tpws "$f4" "$f6" $TPPORT
+			fi
 			;;
-	    tpws_ipset)
-			fw_tpws "--dport 80 $ipset_zapret dst" "--dport 80 $ipset_zapret6 dst" $TPPORT
+	
+		nfqws)
+			if [ ! "$MODE_HTTP" = "1" ] && [ ! "$MODE_HTTPS" = "1" ]; then
+				echo both http and https are disabled. not applying redirection.
+			else
+				if [ "$MODE_HTTP_KEEPALIVE" = "1" ]; then
+					if [ "$MODE_HTTP" = "1" ]; then
+						f4="--dport 80"
+						f6=$f4
+						filter_apply_ipset_target f4 f6
+						fw_nfqws_post "$f4 $desync" "$f6 $desync" $QNUM
+					fi
+					if [ "$MODE_HTTPS" = "1" ]; then
+						f4="--dport 443 $first_packet_only"
+						f6=$f4
+						filter_apply_ipset_target f4 f6
+						fw_nfqws_post "$f4 $desync" "$f6 $desync" $QNUM
+					fi
+				else
+					filter_apply_port_target f4
+					f4="$f4 $first_packet_only"
+					f6=$f4
+					filter_apply_ipset_target f4 f6
+					fw_nfqws_post "$f4 $desync" "$f6 $desync" $QNUM
+				fi
+			fi
 			;;
-	    tpws_ipset_https)
-			fw_tpws "-m multiport --dports 80,443 $ipset_zapret dst" "-m multiport --dports 80,443 $ipset_zapret6 dst" $TPPORT
-			;;
-	    tpws_all_https|tpws_hostlist_https)
-			fw_tpws "-m multiport --dports 80,443" "-m multiport --dports 80,443" $TPPORT
-			;;
-	    nfqws_all_desync|nfqws_hostlist_desync)
-			fw_nfqws_post "$desync" "$desync" $QNUM
-			;;
-	    nfqws_ipset_desync)
-			fw_nfqws_post "$desync $ipset_zapret dst" "$desync $ipset_zapret6 dst" $QNUM
-			;;
-	    custom)
+		custom)
 	    		existf zapret_custom_firewall && zapret_custom_firewall
 			;;
 	esac

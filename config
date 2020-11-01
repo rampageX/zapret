@@ -14,11 +14,20 @@ IP2NET_OPT4="--prefix-length=22-30 --v4-threshold=3/4"
 IP2NET_OPT6="--prefix-length=56-64 --v6-threshold=5"
 
 # CHOOSE OPERATION MODE
-# use nfqws : nfqws_all_desync nfqws_ipset_desync nfqws_hostlist_desync
-# use tpws : tpws_ipset tpws_ipset_https tpws_all tpws_all_https tpws_hostlist
-# no daemon, just ipset : ipset
-# custom mode : custom . should modify init script and add your own code
-MODE=tpws_ipset_https
+# MODE : nfqws,tpws,filter,custom
+# nfqws : use nfqws
+# tpws : use tpws
+# filter : no daemon, just create ipset or download hostlist
+# custom : custom mode. should modify custom init script and add your own code
+MODE=tpws
+# apply fooling to http
+MODE_HTTP=1
+# for nfqws only. support http keep alives. enable only if DPI checks for http request in any outgoing packet
+MODE_HTTP_KEEPALIVE=0
+# apply fooling to https
+MODE_HTTPS=1
+# none,ipset,hostlist
+MODE_FILTER=none
 
 # CHOOSE NFQWS DAEMON OPTIONS for DPI desync mode. run "nfq/nfqws --help" for option list
 DESYNC_MARK=0x40000000

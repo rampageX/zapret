@@ -355,21 +355,35 @@ Choosing parameters
 
 The file /opt/zapret/config is used by various components of the system and contains basic settings.
 It needs to be viewed and edited if necessary.
-Select MODE:
 
-nfqws_all_desync - use nfqws for DPI desync attack on all http and https
-nfqws_ipset_desync - use nfqws for DPI desync attack on http and https , targets filtered by ipset "zapret"
-nfqws_hostlist_desync - use nfqws for DPI desync attack on http and https , only to hostnames from hostlist
 
-tpws_ipset - use tpws on http, targets are filtered by ipset "zapret"
-tpws_ipset_https - use tpws on http and https, targets are filtered by ipset "zapret"
-tpws_all - use tpws on all http
-tpws_all_https - use tpws on all http and https
-tpws_hostlist - same as tpws_all but touch only domains from the hostlist
-tpws_hostlist_https - same as tpws_all_https but touch only domains from the hostlist
+Main mode :
+tpws - use tpws
+tpws - use nfqws
+filter - only fill ipset or load hostlist
+custom - use custom script for running daemons and establishing firewall rules
 
-ipset - only fill ipset. futher actions depend on your own code
-custom - use custom script to run daemons and fill firewall rules. see example in init.d
+MODE=tpws
+
+Enable http fooling :
+
+MODE_HTTP=1
+
+Apply fooling to keep alive http sessions. Only applicable to nfqws. Tpws always fool keepalives.
+Not enabling this can save CPU time.
+
+MODE_HTTP_KEEPALIVE=0
+
+Enable https fooling :
+
+MODE_HTTPS=1
+
+Host filtering mode :
+none - apply fooling to all hosts
+ipset - limit fooling to hosts from ipset zapret/zapret6
+hostlist - limit fooling to hosts from hostlist
+
+MODE_FILTER=none
 
 Its possible to change manipulation options used by tpws :
 

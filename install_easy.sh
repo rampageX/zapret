@@ -49,14 +49,29 @@ read_yes_no()
 	local A
 	read A
 	[ -z "$A" ] || ([ "$A" != "Y" ] && [ "$A" != "y" ] && [ "$A" != "N" ] && [ "$A" != "n" ]) && A=$1
-	[ "$A" = "Y" ] || [ "$A" = "y" ]
+	[ "$A" = "Y" ] || [ "$A" = "y" ] || [ "$A" = "1" ]
 }
 ask_yes_no()
 {
-	# $1 - default (Y/N)
+	# $1 - default (Y/N or 0/1)
 	# $2 - text
-	echo -n "$2 (default : $1) (Y/N) ? "
-	read_yes_no $1
+	local DEFAULT=$1
+	[ "$1" = "1" ] && DEFAULT=Y
+	[ "$1" = "0" ] && DEFAULT=N
+	echo -n "$2 (default : $DEFAULT) (Y/N) ? "
+	read_yes_no $DEFAULT
+}
+ask_yes_no_var()
+{
+	# $1 - variable name for answer : 0/1
+	# $2 - text
+	local DEFAULT
+	eval DEFAULT="\$$1"
+	if ask_yes_no $DEFAULT "$2"; then
+		eval $1=1
+	else
+		eval $1=0
+	fi
 }
 
 on_off_function()
@@ -200,7 +215,6 @@ ask_list()
 	
 	[ "$M" != "$M_OLD" ]
 }
-
 write_config_var()
 {
 	# $1 - mode var
@@ -214,21 +228,62 @@ write_config_var()
 		sed -ri "s/^#?$1=.*$/#$1=/" "$EXEDIR/config"
 	fi
 }
-select_mode()
+
+select_mode_mode()
 {
 	echo
 	echo select MODE :
-	ask_list MODE "tpws_ipset tpws_ipset_https tpws_all tpws_all_https tpws_hostlist tpws_hostlist_https nfqws_all_desync nfqws_ipset_desync nfqws_hostlist_desync ipset custom" tpws_ipset_https && write_config_var MODE
+	ask_list MODE "tpws nfqws filter custom" tpws && write_config_var MODE
 }
+select_mode_http()
+{
+	[ "$MODE" != "filter" ] && {
+		echo
+		ask_yes_no_var MODE_HTTP "enable http support"
+		write_config_var MODE_HTTP
+	}
+}
+select_mode_keepalive()
+{
+	[ "$MODE" = "nfqws" ] && [ "$MODE_HTTP" = "1" ] && {
+		echo
+		echo enable keep alive support only if DPI checks every outgoing packet for http signature
+		echo dont enable otherwise because it consumes more cpu resources
+		ask_yes_no_var MODE_HTTP_KEEPALIVE "enable http keep alive support"
+		write_config_var MODE_HTTP_KEEPALIVE
+	}
+}
+select_mode_https()
+{
+	[ "$MODE" != "filter" ] && {
+		echo
+		ask_yes_no_var MODE_HTTPS "enable https support"
+		write_config_var MODE_HTTPS
+	}
+}
+select_mode_filter()
+{
+	echo
+	echo select filtering :
+	ask_list MODE_FILTER "none ipset hostlist" none && write_config_var MODE_FILTER
+}
+select_mode()
+{
+	select_mode_mode
+	select_mode_http
+	select_mode_keepalive
+	select_mode_https
+	select_mode_filter
+}
+
 select_getlist()
 {
-	# do not touch this in custom mode
-	[ "$MODE" = "custom" ] && return
-
-	if [ "${MODE%hostlist*}" != "$MODE" ] || [ "${MODE%ipset*}" != "$MODE" ]; then
+	if [ "$MODE_FILTER" = "ipset" -o "$MODE_FILTER" = "hostlist" ]; then
+		local D=N
+		[ -n "$GETLIST" ] && D=Y
 		echo
-		if ask_yes_no Y "do you want to auto download ip/host list"; then
-			if [ "${MODE%hostlist*}" != "$MODE" ] ; then
+		if ask_yes_no $D "do you want to auto download ip/host list"; then
+			if [ "$MODE_FILTER" = "hostlist" ] ; then
 				local GL_OLD=$GETLIST
 				GETLIST="get_reestr_hostlist.sh"
 				[ "$GL_OLD" != "$GET_LIST" ] && write_config_var GETLIST
@@ -758,14 +813,14 @@ deoffload_openwrt_firewall()
 		return
 	}
 
-	local mod=0
 	local fo=$(uci -q get firewall.@defaults[0].flow_offloading)
 
-	case $FLOWOFFLOAD in
-		donttouch)
-			if [ "$fo" = "1" ] ; then
-				echo -n "system wide flow offloading detected. "
-				if [ "${MODE%nfqws*}" != "$MODE" ]; then
+	if [ "$fo" = "1" ] ; then
+		local mod=0
+		echo -n "system wide flow offloading detected. "
+		case $FLOWOFFLOAD in
+			donttouch)
+				if [ "$MODE" = "nfqws" ]; then
 					echo its incompatible with nfqws tcp data tampering. disabling
 					uci set firewall.@defaults[0].flow_offloading=0
 					mod=1
@@ -776,22 +831,17 @@ deoffload_openwrt_firewall()
 						echo its compatible with selected options. not disabling
 					fi
 				fi
-			else
-				echo system wide software flow offloading disabled. ok
-			fi
 			;;
 		*)
-			if [ "$fo" = "1" ] ; then
-				echo -n "system wide flow offloading detected. "
-				echo zapret will disable system wide offloading setting and add selective rules if required
-				uci set firewall.@defaults[0].flow_offloading=0
-				mod=1
-			else
-				echo system wide software flow offloading disabled. ok
-			fi
-	esac
-				
-	[ "$mod" = "1" ] && uci commit firewall
+			echo zapret will disable system wide offloading setting and add selective rules if required
+			uci set firewall.@defaults[0].flow_offloading=0
+			mod=1
+		esac
+		[ "$mod" = "1" ] && uci commit firewall
+	else
+		echo system wide software flow offloading disabled. ok
+	fi
+			
 }
 
 install_sysv_init()
