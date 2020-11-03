@@ -234,6 +234,18 @@ select_mode_mode()
 	echo
 	echo select MODE :
 	ask_list MODE "tpws nfqws filter custom" tpws && write_config_var MODE
+	case $MODE in
+		tpws)
+			echo
+			echo tpws options : $TPWS_OPT
+			echo to change : edit TPWS_OPT in $ZAPRET_BASE/config
+			;;
+		nfqws)
+			echo
+			echo nfqws options : $NFQWS_OPT_DESYNC
+			echo to change : edit NFQWS_OPT_DESYNC in $ZAPRET_BASE/config
+			;;
+	esac
 }
 select_mode_http()
 {
