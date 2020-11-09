@@ -386,16 +386,16 @@ copy_all()
 	cp -R "$1" "$2"
 	[ -d "$2/tmp" ] || mkdir "$2/tmp"
 }
-copy_minimal()
+copy_openwrt()
 {
 	local ARCH=$(get_bin_arch)
 	local BINDIR="$1/binaries/$ARCH"
 	
 	[ -d "$2" ] || mkdir -p "$2"
 	
-	mkdir "$2/tpws" "$2/nfq" "$2/ip2net" "$2/mdig" "$2/binaries" "$2/binaries/$ARCH" "$2/tmp"
+	mkdir "$2/tpws" "$2/nfq" "$2/ip2net" "$2/mdig" "$2/binaries" "$2/binaries/$ARCH" "$2/init.d" "$2/tmp"
 	cp -R "$1/ipset" "$2"
-	cp -R "$1/init.d" "$2"
+	cp -R "$1/init.d/openwrt" "$2/init.d"
 	cp "$1/config" "$1/install_easy.sh" "$1/uninstall_easy.sh" "$1/install_bin.sh" "$2"
 	cp "$BINDIR/tpws" "$BINDIR/nfqws" "$BINDIR/ip2net" "$BINDIR/mdig" "$2/binaries/$ARCH"
 }
@@ -889,7 +889,7 @@ install_openwrt()
 	OPENWRT_IFACE_HOOK=$EXEDIR/init.d/openwrt/90-zapret
 	
 	check_bins
-	check_location copy_minimal
+	check_location copy_openwrt
 	select_ipv6
 	check_prerequisites_openwrt
 	install_binaries
