@@ -219,7 +219,10 @@ write_config_var()
 {
 	# $1 - mode var
 	local M
+	
 	eval M="\$$1"
+	# replace / => \/
+	M=${M//\//\\\/}
 	
 	if [ -n "$M" ]; then
 		sed -ri "s/^#?$1=.*$/$1=$M/" "$EXEDIR/config"
@@ -349,6 +352,39 @@ ask_config_offload()
 		echo hardware = always disable system flow offloading setting and configure selective hardware flow offloading
 		echo select flow offloading :
 		ask_list FLOWOFFLOAD "donttouch none software hardware" donttouch && write_config_var FLOWOFFLOAD
+	}
+}
+
+get_free_space_mb()
+{
+    df -m $PWD | awk '/[0-9]%/{print $(NF-2)}'
+}
+get_ram_kb()
+{
+    grep MemTotal /proc/meminfo | awk '{print $2}'
+}
+get_ram_mb()
+{
+    local R=$(get_ram_kb)
+    echo $(($R/1024))
+}
+
+ask_config_tmpdir()
+{
+	local T
+	# ask tmpdir change for low ram systems with enough free disk space
+	[ -n "$GETLIST" ] && [ $(get_free_space_mb "$ZAPRET_BASE/tmp") -ge 128 ] && [ $(get_ram_mb) -le 200 ] && {
+		echo
+		echo /tmp in openwrt is tmpfs. on low RAM systems there may be not enough RAM to store downloaded files
+		echo default tmpfs has size of 50% RAM
+		echo "RAM  : $(get_ram_mb) Mb"
+		echo "DISK : $(get_free_space_mb) Mb"
+		echo select temp file location 
+		[ -z "$TMPDIR" ] && TMPDIR=/tmp
+		ask_list TMPDIR "/tmp $ZAPRET_BASE/tmp" && {
+		    [ "$TMPDIR" = "/tmp" ] && TMPDIR=
+		    write_config_var TMPDIR
+		}
 	}
 }
 
@@ -894,6 +930,7 @@ install_openwrt()
 	check_prerequisites_openwrt
 	install_binaries
 	ask_config
+	ask_config_tmpdir
 	ask_config_offload
 	install_sysv_init
 	# can be previous firewall preventing access
