@@ -371,7 +371,6 @@ get_ram_mb()
 
 ask_config_tmpdir()
 {
-	local T
 	# ask tmpdir change for low ram systems with enough free disk space
 	[ -n "$GETLIST" ] && [ $(get_free_space_mb "$ZAPRET_BASE/tmp") -ge 128 ] && [ $(get_ram_mb) -le 200 ] && {
 		echo
