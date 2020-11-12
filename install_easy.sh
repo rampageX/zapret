@@ -222,8 +222,9 @@ write_config_var()
 	
 	eval M="\$$1"
 	# replace / => \/
-	M=${M//\//\\\/}
-	
+	#M=${M//\//\\\/}
+	M=$(echo $M | sed 's/\//\\\//g')
+
 	if [ -n "$M" ]; then
 		sed -ri "s/^#?$1=.*$/$1=$M/" "$EXEDIR/config"
 	else
