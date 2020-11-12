@@ -1050,7 +1050,7 @@ Cкрипт из /etc/hotplug.d/iface запустит недостающие с
 Копируем zapret на роутер в /tmp.
 
 Запускаем установщик :
- /tmp/zapret_install_easy.sh
+ /tmp/zapret/install_easy.sh
 Он скопирует в /opt/zapret только необходимый минимум файлов :
  config
  install_easy.sh
