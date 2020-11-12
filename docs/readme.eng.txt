@@ -345,9 +345,6 @@ Other option ( Roskomnadzor list - get_hostlist.sh ) is russian specific.
 You can write your own replacement for get_hostlist.sh.
 
 When filtering by domain name, daemons should run without filtering by ipset.
-All traffic goes through daemon, and it decides whether to use manipulation depending on the Host: field in the http request.
-This creates an increased load on the system.
-The domain search itself works very quickly, the load is connected with pumping the amount of data through the process.
 When using large regulator lists estimate the amount of RAM on the router !
 
 Choosing parameters
