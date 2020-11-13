@@ -59,6 +59,7 @@ ask_yes_no()
 	local DEFAULT=$1
 	[ "$1" = "1" ] && DEFAULT=Y
 	[ "$1" = "0" ] && DEFAULT=N
+	[ -z "$DEFAULT" ] && DEFAULT=N
 	echo -n "$2 (default : $DEFAULT) (Y/N) ? "
 	read_yes_no $DEFAULT
 }
@@ -68,7 +69,6 @@ ask_yes_no_var()
 	# $2 - text
 	local DEFAULT
 	eval DEFAULT="\$$1"
-	[ -z "$DEFAULT" ] && DEFAULT=N
 	if ask_yes_no "$DEFAULT" "$2"; then
 		eval $1=1
 	else
