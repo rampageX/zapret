@@ -4,10 +4,11 @@
 
 SCRIPT=$(readlink -f "$0")
 EXEDIR=$(dirname "$SCRIPT")
-ZAPRET_BASE=/opt/zapret
-ZAPRET_CONFIG=$EXEDIR/config
+ZAPRET_CONFIG="$EXEDIR/config"
 
 . "$ZAPRET_CONFIG"
+
+ZAPRET_BASE=/opt/zapret
 
 GET_LIST="$EXEDIR/ipset/get_config.sh"
 GET_LIST_PREFIX=/ipset/get_
@@ -67,7 +68,8 @@ ask_yes_no_var()
 	# $2 - text
 	local DEFAULT
 	eval DEFAULT="\$$1"
-	if ask_yes_no $DEFAULT "$2"; then
+	[ -z "$DEFAULT" ] && DEFAULT=N
+	if ask_yes_no "$DEFAULT" "$2"; then
 		eval $1=1
 	else
 		eval $1=0
@@ -219,17 +221,25 @@ write_config_var()
 {
 	# $1 - mode var
 	local M
-	
 	eval M="\$$1"
-	# replace / => \/
-	#M=${M//\//\\\/}
-	M=$(echo $M | sed 's/\//\\\//g')
 
-	if [ -n "$M" ]; then
-		sed -ri "s/^#?$1=.*$/$1=$M/" "$EXEDIR/config"
+	if grep -q "^$1=\|^#$1=" "$ZAPRET_CONFIG"; then
+		# replace / => \/
+		#M=${M//\//\\\/}
+		M=$(echo $M | sed 's/\//\\\//g')
+		if [ -n "$M" ]; then
+			sed -ri "s/^#?$1=.*$/$1=$M/" "$ZAPRET_CONFIG"
+		else
+			# write with comment at the beginning
+			sed -ri "s/^#?$1=.*$/#$1=/" "$ZAPRET_CONFIG"
+		fi
 	else
-		# write with comment at the beginning
-		sed -ri "s/^#?$1=.*$/#$1=/" "$EXEDIR/config"
+		# var does not exist in config. add it
+		if [ -n "$M" ]; then
+			echo "$1=$M" >>"$ZAPRET_CONFIG"
+		else
+			echo "#$1=$M" >>"$ZAPRET_CONFIG"
+		fi
 	fi
 }
 
@@ -242,12 +252,12 @@ select_mode_mode()
 		tpws)
 			echo
 			echo tpws options : $TPWS_OPT
-			echo to change : edit TPWS_OPT in $ZAPRET_BASE/config
+			echo to change : edit TPWS_OPT in $ZAPRET_CONFIG
 			;;
 		nfqws)
 			echo
 			echo nfqws options : $NFQWS_OPT_DESYNC
-			echo to change : edit NFQWS_OPT_DESYNC in $ZAPRET_BASE/config
+			echo to change : edit NFQWS_OPT_DESYNC in $ZAPRET_CONFIG
 			;;
 	esac
 }
@@ -312,6 +322,7 @@ select_getlist()
 		fi
 	fi
 	GETLIST=""
+echo WWWWWWWWWWWW
 	write_config_var GETLIST
 }
 select_ipv6()
