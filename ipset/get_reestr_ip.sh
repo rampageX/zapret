@@ -16,13 +16,14 @@ dig_reestr()
  # $1 - grep ipmask
  # $2 - iplist
 
- # 2971-18 is TELEGRAM. lots of proxy IPs banned, list grows very large
- grep -av "2971-18" "$ZREESTR" | grep -oE "$1" | cut_local | sort -u | zz "$2"
+ echo processing reestr list $2
+
+ tail -n +2 "$ZREESTR" | grep -oE "$1" | cut_local | sort -u | zz "$2"
 }
 
 
 # assume all https banned by ip
-curl -k --fail --max-time 150 --connect-timeout 5 --retry 3 --max-filesize 251658240 "$ZURL_REESTR" -o "$ZREESTR" ||
+curl -k --fail --max-time 600 --connect-timeout 5 --retry 3 --max-filesize 251658240 "$ZURL_REESTR" -o "$ZREESTR" ||
 {
  echo reestr list download failed
  exit 2
@@ -35,11 +36,11 @@ fi
 #sed -i 's/\\n/\r\n/g' $ZREESTR
 
 [ "$DISABLE_IPV4" != "1" ] && {
- dig_reestr '([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]+)?' "$ZIPLIST"
+ dig_reestr '([1-9][0-9]{1,2}\.){3}[1-9][0-9]{1,2}(/[0-9]+)?' "$ZIPLIST"
 }
 
 [ "$DISABLE_IPV6" != "1" ] && {
- dig_reestr '([0-9,a-f,A-F]{1,4}:){7}[0-9,a-f,A-F]{1,4}(/[0-9]+)?' "$ZIPLIST6"
+ dig_reestr '[0-9,a-f,A-F]{1,4}:[0-9,a-f,A-F,:]+[0-9,a-f,A-F]{1,4}(/[0-9]+)?' "$ZIPLIST6"
 }
 
 rm -f "$ZREESTR"

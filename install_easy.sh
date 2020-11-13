@@ -708,8 +708,15 @@ check_packages_openwrt()
 
 is_linked_to_busybox()
 {
-	local P="$(readlink /bin/$1)"
-	[ "${P%busybox*}" != "$P" ] && [ ! -x /usr/bin/$1 ]
+	local F P
+	F=/usr/bin/$1
+	P="$(readlink $F)"
+	if [ -z "$P" ] && [ -x $F ] && [ ! -L $F ]; then false; return; fi
+	[ "${P%busybox*}" != "$P" ] && return
+	F=/bin/$1
+	P="$(readlink $F)"
+	if [ -z "$P" ] && [ -x $F ] && [ ! -L $F ]; then false; return; fi
+	[ "${P%busybox*}" != "$P" ] && return
 }
 
 check_prerequisites_openwrt()
@@ -735,10 +742,10 @@ check_prerequisites_openwrt()
 	
 	is_linked_to_busybox gzip && {
 		echo
-		echo your system uses default busybox gzip. its several times slower than gnu gzip.
-		echo ip/host list scripts will run much faster with gnu gzip
-		echo installer can install gnu gzip but it requires about 100 Kb space
-		if ask_yes_no N "do you want to install gnu gzip"; then
+		echo your system uses default busybox gzip. its several times slower than GNU gzip.
+		echo ip/host list scripts will run much faster with GNU gzip
+		echo installer can install GNU gzip but it requires about 100 Kb space
+		if ask_yes_no N "do you want to install GNU gzip"; then
 			[ "$UPD" = "0" ] && {
 				opkg update
 				UPD=1
@@ -746,12 +753,25 @@ check_prerequisites_openwrt()
 			opkg install gzip
 		fi
 	}
+	is_linked_to_busybox sort && {
+		echo
+		echo your system uses default busybox sort. its much slower and consumes much more RAM than GNU sort
+		echo ip/host list scripts will run much faster with GNU sort
+		echo installer can install GNU sort but it requires about 100 Kb space
+		if ask_yes_no N "do you want to install GNU sort"; then
+			[ "$UPD" = "0" ] && {
+				opkg update
+				UPD=1
+			}
+			opkg install coreutils-sort
+		fi
+	}
 	is_linked_to_busybox grep && {
 		echo
 		echo your system uses default busybox grep. its damn infinite slow with -f option
 		echo get_combined.sh will be severely impacted
-		echo installer can install gnu grep but it requires about 0.5 Mb space
-		if ask_yes_no N "do you want to install gnu grep"; then
+		echo installer can install GNU grep but it requires about 0.5 Mb space
+		if ask_yes_no N "do you want to install GNU grep"; then
 			[ "$UPD" = "0" ] && {
 				opkg update
 				UPD=1
@@ -956,7 +976,6 @@ install_openwrt()
 	deoffload_openwrt_firewall
 	restart_openwrt_firewall
 }
-
 
 
 # build binaries, do not use precompiled
