@@ -322,7 +322,6 @@ select_getlist()
 		fi
 	fi
 	GETLIST=""
-echo WWWWWWWWWWWW
 	write_config_var GETLIST
 }
 select_ipv6()
