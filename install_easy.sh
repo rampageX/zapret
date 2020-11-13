@@ -750,7 +750,7 @@ check_prerequisites_openwrt()
 				opkg update
 				UPD=1
 			}
-			opkg install gzip
+			opkg install --force-overwrite gzip
 		fi
 	}
 	is_linked_to_busybox sort && {
@@ -763,7 +763,7 @@ check_prerequisites_openwrt()
 				opkg update
 				UPD=1
 			}
-			opkg install coreutils-sort
+			opkg install --force-overwrite coreutils-sort
 		fi
 	}
 	is_linked_to_busybox grep && {
@@ -776,7 +776,7 @@ check_prerequisites_openwrt()
 				opkg update
 				UPD=1
 			}
-			opkg install grep
+			opkg install --force-overwrite grep
 
 			# someone reported device partially fail if /bin/grep is absent
 			# grep package deletes /bin/grep
