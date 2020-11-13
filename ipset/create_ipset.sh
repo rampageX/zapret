@@ -18,6 +18,7 @@ IPSET_SAVERAM_MIN_FILESIZE=131072
 
 while [ -n "$1" ]; do
 	[ "$1" = "no-update" ] && NO_UPDATE=1
+	[ "$1" = "clear" ] && DO_CLEAR=1
 	shift
 done
 
@@ -112,9 +113,11 @@ create_ipset()
   [ "$NO_UPDATE" = "1" ] && return
  }
  ipset flush $2
- for f in "$5" "$6" ; do
-  ipset_restore "$f" "$2" $1
- done
+ [ "$DO_CLEAR" = "1" ] || {
+  for f in "$5" "$6" ; do
+   ipset_restore "$f" "$2" $1
+  done
+ }
  return 0
 }
 

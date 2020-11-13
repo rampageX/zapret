@@ -158,6 +158,9 @@ remove_openwrt_firewall()
 	openwrt_fw_section_del
 	# from old zapret versions. now we use single include
 	openwrt_fw_section_del 6
+
+	# free some RAM
+	"$EXEDIR/ipset/create_ipset.sh" clear
 }
 
 restart_openwrt_firewall()

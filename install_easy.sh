@@ -716,7 +716,7 @@ is_linked_to_busybox()
 	F=/bin/$1
 	P="$(readlink $F)"
 	if [ -z "$P" ] && [ -x $F ] && [ ! -L $F ]; then false; return; fi
-	[ "${P%busybox*}" != "$P" ] && return
+	[ "${P%busybox*}" != "$P" ]
 }
 
 check_prerequisites_openwrt()
@@ -868,6 +868,9 @@ remove_openwrt_firewall()
 	openwrt_fw_section_del
 	# from old zapret versions. now we use single include
 	openwrt_fw_section_del 6
+
+	# free some RAM
+	"$EXEDIR/ipset/create_ipset.sh" clear
 }
 
 install_openwrt_iface_hook()
