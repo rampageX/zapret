@@ -14,6 +14,11 @@ GET_LIST="$EXEDIR/ipset/get_config.sh"
 GET_LIST_PREFIX=/ipset/get_
 INIT_SCRIPT=/etc/init.d/zapret
 
+DNSCHECK_DNS="1.1.1.1 8.8.8.8 77.88.8.8"
+DNSCHECK_DOM="lenta.ru putinhuylo.com rutracker.org nnmclub.to kinozal.tv"
+DNSCHECK_DIG1=/tmp/dig1.txt
+DNSCHECK_DIG2=/tmp/dig2.txt
+
 SYSTEMD_SYSTEM_DIR=/lib/systemd/system
 [ -d "$SYSTEMD_SYSTEM_DIR" ] || SYSTEMD_SYSTEM_DIR=/usr/lib/systemd/system
 
@@ -662,6 +667,63 @@ crontab_add()
 }
 
 
+pingtest()
+{
+	ping -c 1 -W 1 $1 >/dev/null
+}
+find_working_public_dns()
+{
+	for dns in $DNSCHECK_DNS; do
+		pingtest $dns && nslookup w3.org $dns >/dev/null 2>/dev/null && {
+			PUBDNS=$dns
+			return
+		}
+	done
+	false
+}
+check_dns_spoof()
+{
+	# $1 - domain
+	# $2 - non-ISP DNS
+	echo $1 | $EXEDIR/mdig/mdig --family=4 >"$DNSCHECK_DIG1"
+	nslookup $1 $2 | grep ^Address | grep -oE '[1-9][0-9]{0,2}\.([0-9]{1,3}\.){2}[0-9]{1,3}(/[0-9]+)?$' >"$DNSCHECK_DIG2"
+	grep -qvFf "$DNSCHECK_DIG1" "$DNSCHECK_DIG2"
+}
+check_dns_cleanup()
+{
+	rm -f "$DNSCHECK_DIG1" "$DNSCHECK_DIG2" 2>/dev/null
+}
+check_dns()
+{
+	echo \* checking DNS
+
+	find_working_public_dns || {
+		echo no working public DNS was found
+		false
+		return
+	}
+	echo using public DNS : $PUBDNS
+
+	for dom in $DNSCHECK_DOM; do
+		if check_dns_spoof $dom $PUBDNS ; then
+			echo $dom : MISMATCH
+			echo -- system resolver :
+			cat "$DNSCHECK_DIG1"
+			echo -- $PUBDNS :
+			cat "$DNSCHECK_DIG2"
+			check_dns_cleanup
+			echo -- POSSIBLE DNS HIJACK DETECTED. ZAPRET WILL NOT HELP YOU IN CASE DNS IS SPOOFED !!!
+			echo -- DNS CHANGE OR DNSCRYPT MAY BE REQUIRED
+			false
+			return
+		else
+			echo $dom : OK
+		fi
+	done
+	check_dns_cleanup
+	true
+}
+
 install_systemd()
 {
 	INIT_SCRIPT_SRC=$EXEDIR/init.d/sysv/zapret
@@ -671,6 +733,7 @@ install_systemd()
 	check_prerequisites_linux
 	service_stop_systemd
 	install_binaries
+	check_dns
 	select_ipv6
 	ask_config_desktop
 	ask_config
@@ -959,9 +1022,10 @@ install_openwrt()
 	
 	check_bins
 	check_location copy_openwrt
+	install_binaries
+	check_dns
 	select_ipv6
 	check_prerequisites_openwrt
-	install_binaries
 	ask_config
 	ask_config_tmpdir
 	ask_config_offload
