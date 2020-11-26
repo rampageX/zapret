@@ -686,7 +686,7 @@ check_dns_spoof()
 	# $1 - domain
 	# $2 - public DNS
 	echo $1 | "$EXEDIR/mdig/mdig" --family=4 >"$DNSCHECK_DIG1"
-	nslookup $1 $2 | grep ^Address | grep -oE '[1-9][0-9]{0,2}\.([0-9]{1,3}\.){2}[0-9]{1,3}(/[0-9]+)?$' >"$DNSCHECK_DIG2"
+	nslookup $1 $2 | grep ^Address | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}$' >"$DNSCHECK_DIG2"
 	# check whether system resolver returns anything other than public DNS
 	grep -qvFf "$DNSCHECK_DIG2" "$DNSCHECK_DIG1"
 }
