@@ -685,7 +685,7 @@ check_dns_spoof()
 {
 	# $1 - domain
 	# $2 - non-ISP DNS
-	echo $1 | $EXEDIR/mdig/mdig --family=4 >"$DNSCHECK_DIG1"
+	echo $1 | "$EXEDIR/mdig/mdig" --family=4 >"$DNSCHECK_DIG1"
 	nslookup $1 $2 | grep ^Address | grep -oE '[1-9][0-9]{0,2}\.([0-9]{1,3}\.){2}[0-9]{1,3}(/[0-9]+)?$' >"$DNSCHECK_DIG2"
 	grep -qvFf "$DNSCHECK_DIG1" "$DNSCHECK_DIG2"
 }
@@ -726,7 +726,7 @@ check_dns()
 
 install_systemd()
 {
-	INIT_SCRIPT_SRC=$EXEDIR/init.d/sysv/zapret
+	INIT_SCRIPT_SRC="$EXEDIR/init.d/sysv/zapret"
 
 	check_bins
 	check_location copy_all
@@ -1015,10 +1015,10 @@ service_start_sysv()
 
 install_openwrt()
 {
-	INIT_SCRIPT_SRC=$EXEDIR/init.d/openwrt/zapret
-	FW_SCRIPT_SRC=$EXEDIR/init.d/openwrt/firewall.zapret
+	INIT_SCRIPT_SRC="$EXEDIR/init.d/openwrt/zapret"
+	FW_SCRIPT_SRC="$EXEDIR/init.d/openwrt/firewall.zapret"
 	OPENWRT_FW_INCLUDE=/etc/firewall.zapret
-	OPENWRT_IFACE_HOOK=$EXEDIR/init.d/openwrt/90-zapret
+	OPENWRT_IFACE_HOOK="$EXEDIR/init.d/openwrt/90-zapret"
 	
 	check_bins
 	check_location copy_openwrt
