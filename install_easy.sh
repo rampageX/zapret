@@ -734,7 +734,7 @@ check_dns()
 		echo non-unique IPs :
 		sort "$DNSCHECK_DIGS" | uniq -d
 		echo -- POSSIBLE DNS HIJACK DETECTED. ZAPRET WILL NOT HELP YOU IN CASE DNS IS SPOOFED !!!
-		echo -- DNS CHANGE OR DNSCRYPT MAY BE REQUIRED
+		echo -- DNSCRYPT MAY BE REQUIRED
 		check_dns_cleanup
 		false
 		return
