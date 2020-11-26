@@ -18,6 +18,7 @@ DNSCHECK_DNS="1.1.1.1 8.8.8.8 77.88.8.8"
 DNSCHECK_DOM="lenta.ru putinhuylo.com rutracker.org nnmclub.to kinozal.tv"
 DNSCHECK_DIG1=/tmp/dig1.txt
 DNSCHECK_DIG2=/tmp/dig2.txt
+DNSCHECK_DIGS=/tmp/digs.txt
 
 SYSTEMD_SYSTEM_DIR=/lib/systemd/system
 [ -d "$SYSTEMD_SYSTEM_DIR" ] || SYSTEMD_SYSTEM_DIR=/usr/lib/systemd/system
@@ -692,10 +693,12 @@ check_dns_spoof()
 }
 check_dns_cleanup()
 {
-	rm -f "$DNSCHECK_DIG1" "$DNSCHECK_DIG2" 2>/dev/null
+	rm -f "$DNSCHECK_DIG1" "$DNSCHECK_DIG2" "$DNSCHECK_DIGS" 2>/dev/null
 }
 check_dns()
 {
+	local C1 C2
+
 	echo \* checking DNS
 
 	find_working_public_dns || {
@@ -705,6 +708,7 @@ check_dns()
 	}
 	echo using public DNS : $PUBDNS
 
+	[ -f "$DNSCHECK_DIGS" ] && rm -f "$DNSCHECK_DIGS"
 	for dom in $DNSCHECK_DOM; do
 		if check_dns_spoof $dom $PUBDNS ; then
 			echo $dom : MISMATCH
@@ -719,8 +723,22 @@ check_dns()
 			return
 		else
 			echo $dom : OK
+			cat "$DNSCHECK_DIG1" >>"$DNSCHECK_DIGS"
 		fi
 	done
+	C1=$(wc -l <"$DNSCHECK_DIGS")
+	C2=$(sort -u "$DNSCHECK_DIGS" | wc -l)
+	[ "$C1" = "$C2" ] ||
+	{
+		echo system dns resolver has returned equal IPs for some domains checked above \($C1 total, $C2 unique\)
+		echo non-unique IPs :
+		sort "$DNSCHECK_DIGS" | uniq -d
+		echo -- POSSIBLE DNS HIJACK DETECTED. ZAPRET WILL NOT HELP YOU IN CASE DNS IS SPOOFED !!!
+		echo -- DNS CHANGE OR DNSCRYPT MAY BE REQUIRED
+		check_dns_cleanup
+		false
+		return
+	}
 	check_dns_cleanup
 	true
 }
