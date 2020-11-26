@@ -49,7 +49,7 @@ fi
 #sed -i 's/\\n/\r\n/g' $ZREESTR
 
 [ "$DISABLE_IPV4" != "1" ] && {
- dig_reestr '([1-9][0-9]{1,2}\.){3}[1-9][0-9]{1,2}(/[0-9]+)?' "$ZIPLIST" "$ZIPLIST_IPBAN"
+ dig_reestr '[1-9][0-9]{0,2}\.([0-9]{1,3}\.){2}[0-9]{1,3}(/[0-9]+)?' "$ZIPLIST" "$ZIPLIST_IPBAN"
 }
 
 [ "$DISABLE_IPV6" != "1" ] && {
