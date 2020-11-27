@@ -50,9 +50,9 @@ You need to run them with the necessary parameters and redirect certain traffic 
 To redirect a TCP connection to a transparent proxy, the following commands are used:
 
 forwarded fraffic :
-iptables -t nat -I PREROUTING -i <internal_interface> -p tcp --dport 80 -j DNAT --to 127.0.0.1:1188
+iptables -t nat -I PREROUTING -i <internal_interface> -p tcp --dport 80 -j DNAT --to 127.0.0.127:1188
 outgoing traffic :
-iptables -t nat -I OUTPUT -o <external_interface> -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to 127.0.0.1:1188
+iptables -t nat -I OUTPUT -o <external_interface> -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to 127.0.0.127:1188
 
 DNAT on localhost works in the OUTPUT chain, but does not work in the PREROUTING chain without enabling the route_localnet parameter:
 
@@ -62,6 +62,12 @@ You can use "-j REDIRECT --to-port 1188" instead of DNAT, but in this case the t
 should listen on the ip address of the incoming interface or on all addresses. Listen all - not good
 in terms of security. Listening one (local) is possible, but automated scripts will have to recognize it,
 then dynamically enter it into the command. In any case, additional efforts are required.
+Using route_localnet can also introduce some security risks. You make available from internal_interface everything
+bound to 127.0.0.0/8. Services are usually bound to 127.0.0.1. Its possible to deny input to 127.0.0.1 from all interfaces except lo
+or bind tpws to any other IP from 127.0.0.0/8 range, for example to 127.0.0.127, and allow incomings only to that IP :
+
+iptables -A INPUT ! -i lo -d 127.0.0.127 -j ACCEPT
+iptables -A INPUT ! -i lo -d 127.0.0.0/8 -j DROP
 
 Owner filter is necessary to prevent recursive redirection of connections from tpws itself.
 tpws must be started under OS user "tpws".
