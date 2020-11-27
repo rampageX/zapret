@@ -162,6 +162,37 @@ dnat6_target()
 	}
 }
 
+prepare_tpws_fw4()
+{
+	# otherwise linux kernel will treat 127.0.0.0/8 as "martian" ip and refuse routing to it
+	# NOTE : kernels <3.6 do not have this feature. consider upgrading or change DNAT to REDIRECT and do not bind to 127.0.0.0/8
+	[ -n "$IFACE_LAN" ] && {
+		iptables -C INPUT -i $IFACE_LAN -j input_lan_rule_zapret 2>/dev/null || {
+			# allow localnet route only to special tpws IP
+			iptables -N input_lan_rule_zapret 2>/dev/null
+			iptables -F input_lan_rule_zapret
+			iptables -A input_lan_rule_zapret -d $TPWS_LOCALHOST4 -j RETURN
+			iptables -A input_lan_rule_zapret -d 127.0.0.0/8 -j DROP
+			ipt INPUT -i $IFACE_LAN -j input_lan_rule_zapret
+		}
+		sysctl -qw net.ipv4.conf.$IFACE_LAN.route_localnet=1
+	}
+}
+unprepare_tpws_fw4()
+{
+	[ -n "$IFACE_LAN" ] && {
+		sysctl -qw net.ipv4.conf.$IFACE_LAN.route_localnet=0
+		ipt_del INPUT -i $IFACE_LAN -j input_lan_rule_zapret 2>/dev/null
+		iptables -F input_lan_rule_zapret 2>/dev/null
+		iptables -X input_lan_rule_zapret 2>/dev/null
+	}
+}
+unprepare_tpws_fw()
+{
+	unprepare_tpws_fw4
+}
+
+
 print_op()
 {
 	if [ "$1" = "1" ]; then
@@ -177,6 +208,7 @@ fw_tpws4()
 	# $2 - iptable filter for ipv4
 	# $3 - tpws port
 	[ "$DISABLE_IPV4" = "1" ] || {
+		[ "$1" = 1 ] && prepare_tpws_fw4
 		print_op $1 "$2" "tpws"
 		[ -n "$IFACE_LAN" ] && {
 			ipt_add_del $1 PREROUTING -t nat $IPT_ILAN -p tcp $2 $IPSET_EXCLUDE dst -j DNAT --to $TPWS_LOCALHOST4:$3
@@ -330,33 +362,13 @@ prepare_user()
 	# also its good idea not to run tpws as root
 	id -u $WS_USER >/dev/null 2>/dev/null || useradd --no-create-home --system --shell /bin/false $WS_USER
 }
-prepare_tpws()
-{
-	prepare_user
-
-	# otherwise linux kernel will treat 127.0.0.0/8 as "martian" ip and refuse routing to it
-	# NOTE : kernels <3.6 do not have this feature. consider upgrading or change DNAT to REDIRECT and do not bind to 127.0.0.0/8
-	[ -n "$IFACE_LAN" ] && {
-		# allow localnet route only to special tpws IP
-		iptables -N input_lan_rule_zapret 2>/dev/null
-		iptables -F input_lan_rule_zapret
-		iptables -A input_lan_rule_zapret -d $TPWS_LOCALHOST4 -j RETURN
-		iptables -A input_lan_rule_zapret -d 127.0.0.0/8 -j DROP
-		ipt INPUT -i $IFACE_LAN -j input_lan_rule_zapret
-		sysctl -qw net.ipv4.conf.$IFACE_LAN.route_localnet=1
-	}
-}
-prepare_nfqws()
-{
-	prepare_user
-}
 do_tpws()
 {
 	# $1 : 1 - run, 0 - stop
 	# $2 : daemon number
 	# $3 : daemon args
 
-	[ "$1" = "1" ] && prepare_tpws
+	[ "$1" = "1" ] && prepare_user
 
 	[ "$DISABLE_IPV4" = "1" ] && [ "$DISABLE_IPV6" = "1" ] && return 0
 
@@ -376,7 +388,7 @@ do_nfqws()
 	# $2 : daemon number
 	# $3 : daemon args
 
-	[ "$1" = "1" ] && prepare_nfqws
+	[ "$1" = "1" ] && prepare_user
 	do_daemon $1 $2 $NFQWS "$NFQWS_OPT_BASE $3"
 }
 
@@ -473,6 +485,7 @@ zapret_do_firewall()
 	    		existf zapret_custom_firewall && zapret_custom_firewall $1
 			;;
 	esac
+	[ "$1" = 0 ] && unprepare_tpws_fw
 }
 zapret_apply_firewall()
 {
