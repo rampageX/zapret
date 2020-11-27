@@ -33,8 +33,8 @@ For DNAT :
 
 # run tpws as user "tpws". its required to avoid loops.
 sysctl -w net.ipv4.conf.eth1.route_localnet=1
-iptables -t nat -I PREROUTING -p tcp --dport 80 -j DNAT --to 127.0.0.1:1188
-iptables -t nat -I OUTPUT -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to 127.0.0.1:1188
+iptables -t nat -I PREROUTING -p tcp --dport 80 -j DNAT --to 127.0.0.127:1188
+iptables -t nat -I OUTPUT -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to 127.0.0.127:1188
 
 
 Reset all iptable rules :
