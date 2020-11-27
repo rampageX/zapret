@@ -173,7 +173,7 @@ prepare_tpws_fw4()
 			iptables -F input_lan_rule_zapret
 			iptables -A input_lan_rule_zapret -d $TPWS_LOCALHOST4 -j RETURN
 			iptables -A input_lan_rule_zapret -d 127.0.0.0/8 -j DROP
-			ipt INPUT -i $IFACE_LAN -j input_lan_rule_zapret
+			iptables -I INPUT -i $IFACE_LAN -j input_lan_rule_zapret
 		}
 		sysctl -qw net.ipv4.conf.$IFACE_LAN.route_localnet=1
 	}
