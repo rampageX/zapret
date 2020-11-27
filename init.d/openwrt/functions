@@ -6,6 +6,7 @@
 QNUM=200
 TPPORT=1188
 TPWS_USER=daemon
+TPWS_LOCALHOST4=127.0.0.127
 [ -n "$DESYNC_MARK" ] || DESYNC_MARK=0x40000000
 
 # max wait time for the link local ipv6 on the LAN interface
@@ -223,11 +224,16 @@ fw_tpws4()
     network_find_wan_all wan_iface
     for ext_iface in $wan_iface; do
        network_get_device DEVICE $ext_iface
-       ipt OUTPUT -t nat -o $DEVICE $IPT_OWNER -p tcp $1 $IPSET_EXCLUDE dst -j DNAT --to 127.0.0.1:$2
+       ipt OUTPUT -t nat -o $DEVICE $IPT_OWNER -p tcp $1 $IPSET_EXCLUDE dst -j DNAT --to $TPWS_LOCALHOST4:$2
     done
-    ipt prerouting_lan_rule -t nat -p tcp $1 $IPSET_EXCLUDE dst -j DNAT --to 127.0.0.1:$2
+    ipt prerouting_lan_rule -t nat -p tcp $1 $IPSET_EXCLUDE dst -j DNAT --to $TPWS_LOCALHOST4:$2
     network_get_device DEVICE lan
-    sysctl -qw net.ipv4.conf.$DEVICE.route_localnet=1
+    [ -n "$DEVICE" ] && {
+	    # allow localnet route only to special tpws IP
+	    ipt input_lan_rule -d 127.0.0.0/8 -j DROP
+	    ipt input_lan_rule -d $TPWS_LOCALHOST4 -j ACCEPT
+	    sysctl -qw net.ipv4.conf.$DEVICE.route_localnet=1
+    }
  }
 }
 fw_tpws6()

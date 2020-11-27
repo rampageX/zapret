@@ -16,11 +16,12 @@ NFQWS_OPT_BASE="--qnum=$QNUM --user=$WS_USER"
 
 TPPORT=1188
 TPWS="$ZAPRET_BASE/tpws/tpws"
+TPWS_LOCALHOST4=127.0.0.127
 HOSTLIST="$ZAPRET_BASE/ipset/zapret-hosts.txt.gz"
 [ -f "$HOSTLIST" ] || HOSTLIST="$ZAPRET_BASE/ipset/zapret-hosts-user.txt"
 
 TPWS_OPT_BASE="--user=$WS_USER --port=$TPPORT"
-TPWS_OPT_BASE4="--bind-addr=127.0.0.1"
+TPWS_OPT_BASE4="--bind-addr=$TPWS_LOCALHOST4"
 TPWS_OPT_BASE6="--bind-addr=::1"
 # first wait for lan to ifup, then wait for bind-wait-ip-linklocal seconds for link local address and bind-wait-ip for any ipv6 as the worst case
 TPWS_OPT_BASE6_PRE="--bind-linklocal=prefer --bind-wait-ifup=30 --bind-wait-ip=30 --bind-wait-ip-linklocal=3"
@@ -178,9 +179,9 @@ fw_tpws4()
 	[ "$DISABLE_IPV4" = "1" ] || {
 		print_op $1 "$2" "tpws"
 		[ -n "$IFACE_LAN" ] && {
-			ipt_add_del $1 PREROUTING -t nat $IPT_ILAN -p tcp $2 $IPSET_EXCLUDE dst -j DNAT --to 127.0.0.1:$3
+			ipt_add_del $1 PREROUTING -t nat $IPT_ILAN -p tcp $2 $IPSET_EXCLUDE dst -j DNAT --to $TPWS_LOCALHOST4:$3
 	 	}
-		ipt_add_del $1 OUTPUT -t nat $IPT_OWAN -m owner ! --uid-owner $WS_USER -p tcp $2 $IPSET_EXCLUDE dst -j DNAT --to 127.0.0.1:$3
+		ipt_add_del $1 OUTPUT -t nat $IPT_OWAN -m owner ! --uid-owner $WS_USER -p tcp $2 $IPSET_EXCLUDE dst -j DNAT --to $TPWS_LOCALHOST4:$3
 	}
 }
 fw_tpws6()
@@ -333,9 +334,14 @@ prepare_tpws()
 {
 	prepare_user
 
-	# otherwise linux kernel will treat 127.0.0.1 as "martian" ip and refuse routing to it
-	# NOTE : kernels <3.6 do not have this feature. consider upgrading or change DNAT to REDIRECT and do not bind to 127.0.0.1
-	[ -n "$IFACE_LAN" ] && sysctl -qw net.ipv4.conf.$IFACE_LAN.route_localnet=1
+	# otherwise linux kernel will treat 127.0.0.0/8 as "martian" ip and refuse routing to it
+	# NOTE : kernels <3.6 do not have this feature. consider upgrading or change DNAT to REDIRECT and do not bind to 127.0.0.0/8
+	[ -n "$IFACE_LAN" ] && {
+		# allow localnet route only to special tpws IP
+		ipt INPUT -i $IFACE_LAN -d 127.0.0.0/8 -j DROP
+		ipt INPUT -i $IFACE_LAN -d $TPWS_LOCALHOST4 -j ACCEPT
+		sysctl -qw net.ipv4.conf.$IFACE_LAN.route_localnet=1
+	}
 }
 prepare_nfqws()
 {
