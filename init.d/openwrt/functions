@@ -230,8 +230,10 @@ fw_tpws4()
     network_get_device DEVICE lan
     [ -n "$DEVICE" ] && {
 	    # allow localnet route only to special tpws IP
-	    ipt input_lan_rule -d 127.0.0.0/8 -j DROP
-	    ipt input_lan_rule -d $TPWS_LOCALHOST4 -j ACCEPT
+	    iptables -N input_lan_rule_zapret
+	    ipt input_lan_rule_zapret -d 127.0.0.0/8 -j DROP
+	    ipt input_lan_rule_zapret -d $TPWS_LOCALHOST4 -j RETURN
+	    ipt input_lan_rule -j input_lan_rule_zapret
 	    sysctl -qw net.ipv4.conf.$DEVICE.route_localnet=1
     }
  }

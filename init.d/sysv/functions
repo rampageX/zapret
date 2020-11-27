@@ -338,8 +338,11 @@ prepare_tpws()
 	# NOTE : kernels <3.6 do not have this feature. consider upgrading or change DNAT to REDIRECT and do not bind to 127.0.0.0/8
 	[ -n "$IFACE_LAN" ] && {
 		# allow localnet route only to special tpws IP
-		ipt INPUT -i $IFACE_LAN -d 127.0.0.0/8 -j DROP
-		ipt INPUT -i $IFACE_LAN -d $TPWS_LOCALHOST4 -j ACCEPT
+		iptables -N input_lan_rule_zapret 2>/dev/null
+		iptables -F input_lan_rule_zapret
+		iptables -A input_lan_rule_zapret -d $TPWS_LOCALHOST4 -j RETURN
+		iptables -A input_lan_rule_zapret -d 127.0.0.0/8 -j DROP
+		ipt INPUT -i $IFACE_LAN -j input_lan_rule_zapret
 		sysctl -qw net.ipv4.conf.$IFACE_LAN.route_localnet=1
 	}
 }
