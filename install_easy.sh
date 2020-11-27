@@ -743,6 +743,7 @@ check_dns()
 	}
 	echo all resolved IPs are unique
 	echo -- DNS looks good
+	echo -- NOTE this check is Russia targeted. In your country other domains can blocked.
 	check_dns_cleanup
 	true
 }
