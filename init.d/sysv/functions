@@ -181,10 +181,12 @@ prepare_tpws_fw4()
 unprepare_tpws_fw4()
 {
 	[ -n "$IFACE_LAN" ] && {
-		sysctl -qw net.ipv4.conf.$IFACE_LAN.route_localnet=0
-		ipt_del INPUT -i $IFACE_LAN -j input_lan_rule_zapret 2>/dev/null
-		iptables -F input_lan_rule_zapret 2>/dev/null
-		iptables -X input_lan_rule_zapret 2>/dev/null
+		iptables -C INPUT -i $IFACE_LAN -j input_lan_rule_zapret 2>/dev/null && {
+			sysctl -qw net.ipv4.conf.$IFACE_LAN.route_localnet=0
+			iptables -D INPUT -i $IFACE_LAN -j input_lan_rule_zapret
+			iptables -F input_lan_rule_zapret
+			iptables -X input_lan_rule_zapret
+		}
 	}
 }
 unprepare_tpws_fw()
