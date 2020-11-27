@@ -14,8 +14,8 @@ GET_LIST="$EXEDIR/ipset/get_config.sh"
 GET_LIST_PREFIX=/ipset/get_
 INIT_SCRIPT=/etc/init.d/zapret
 
-DNSCHECK_DNS="1.1.1.1 8.8.8.8 77.88.8.8"
-DNSCHECK_DOM="lenta.ru putinhuylo.com rutracker.org nnmclub.to kinozal.tv"
+DNSCHECK_DNS="8.8.8.8 1.1.1.1 77.88.8.8"
+DNSCHECK_DOM="pornhub.com putinhuylo.com rutracker.org nnmclub.to kinozal.tv"
 DNSCHECK_DIG1=/tmp/dig1.txt
 DNSCHECK_DIG2=/tmp/dig2.txt
 DNSCHECK_DIGS=/tmp/digs.txt
@@ -701,31 +701,33 @@ check_dns()
 
 	echo \* checking DNS
 
-	find_working_public_dns || {
-		echo no working public DNS was found
-		false
-		return
-	}
-	echo using public DNS : $PUBDNS
-
 	[ -f "$DNSCHECK_DIGS" ] && rm -f "$DNSCHECK_DIGS"
-	for dom in $DNSCHECK_DOM; do
-		if check_dns_spoof $dom $PUBDNS ; then
-			echo $dom : MISMATCH
-			echo -- system resolver :
-			cat "$DNSCHECK_DIG1"
-			echo -- $PUBDNS :
-			cat "$DNSCHECK_DIG2"
-			check_dns_cleanup
-			echo -- POSSIBLE DNS HIJACK DETECTED. ZAPRET WILL NOT HELP YOU IN CASE DNS IS SPOOFED !!!
-			echo -- DNS CHANGE OR DNSCRYPT MAY BE REQUIRED
-			false
-			return
-		else
-			echo $dom : OK
-			cat "$DNSCHECK_DIG1" >>"$DNSCHECK_DIGS"
-		fi
-	done
+	if find_working_public_dns ; then
+		echo comparing system resolver to public DNS : $PUBDNS
+		for dom in $DNSCHECK_DOM; do
+			if check_dns_spoof $dom $PUBDNS ; then
+				echo $dom : MISMATCH
+				echo -- system resolver :
+				cat "$DNSCHECK_DIG1"
+				echo -- $PUBDNS :
+				cat "$DNSCHECK_DIG2"
+				check_dns_cleanup
+				echo -- POSSIBLE DNS HIJACK DETECTED. ZAPRET WILL NOT HELP YOU IN CASE DNS IS SPOOFED !!!
+				echo -- DNS CHANGE OR DNSCRYPT MAY BE REQUIRED
+				false
+				return
+			else
+				echo $dom : OK
+				cat "$DNSCHECK_DIG1" >>"$DNSCHECK_DIGS"
+			fi
+		done
+	else
+		echo no working public DNS was found. looks like public DNS blocked.
+		for dom in $DNSCHECK_DOM; do echo $dom; done | "$EXEDIR/mdig/mdig" --family=4 >"$DNSCHECK_DIGS"
+	fi
+
+	echo checking resolved IP uniqueness for : $DNSCHECK_DOM
+	echo censor\'s DNS can return equal result for multiple blocked domains.
 	C1=$(wc -l <"$DNSCHECK_DIGS")
 	C2=$(sort -u "$DNSCHECK_DIGS" | wc -l)
 	[ "$C1" = "$C2" ] ||
@@ -739,6 +741,8 @@ check_dns()
 		false
 		return
 	}
+	echo all resolved IPs are unique
+	echo -- DNS looks good
 	check_dns_cleanup
 	true
 }
