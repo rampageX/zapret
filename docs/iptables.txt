@@ -60,3 +60,4 @@ iptables -t mangle -P FORWARD ACCEPT
 iptables -t mangle -P OUTPUT ACCEPT
 iptables -t raw -P PREROUTING ACCEPT
 iptables -t raw -P OUTPUT ACCEPT
+
