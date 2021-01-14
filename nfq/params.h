@@ -25,6 +25,8 @@ struct params_s
 	uint32_t desync_fwmark;
 	char hostfile[256];
 	strpool *hostlist;
+	uint8_t fake_http[1460],fake_tls[1460];
+	size_t fake_http_size,fake_tls_size;
 };
 
 extern struct params_s params;

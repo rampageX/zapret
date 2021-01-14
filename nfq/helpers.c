@@ -43,3 +43,26 @@ char *strncasestr(const char *s,const char *find, size_t slen)
 	}
 	return (char *)s;
 }
+
+bool load_file(const char *filename,void *buffer,size_t *buffer_size)
+{
+	FILE *F;
+
+	F = fopen(filename,"rb");
+	if (!F) return false;
+
+	*buffer_size = fread(buffer,1,*buffer_size,F);
+	if (ferror(F))
+	{
+		fclose(F);
+		return false;
+	}
+
+	fclose(F);
+	return true;
+}
+bool load_file_nonempty(const char *filename,void *buffer,size_t *buffer_size)
+{
+	bool b = load_file(filename,buffer,buffer_size);
+	return b && *buffer_size;
+}

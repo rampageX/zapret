@@ -184,6 +184,8 @@ nfqws
  --dpi-desync-skip-nosni=0|1		; 1(default)=не применять dpi desync для запросов без hostname в SNI, в частности для ESNI
  --dpi-desync-split-pos=<1..1500>	; (только для disorder) разбивать пакет на указанной позиции
  --dpi-desync-any-protocol=0|1		; 0(default)=работать только по http request и tls clienthello  1=по всем непустым пакетам данных
+ --dpi-desync-fake-http=<filename>	; файл, содержащий фейковый http запрос для dpi-desync=fake, на замену стандартному w3.org
+ --dpi-desync-fake-tls=<filename>	; файл, содержащий фейковый tls clienthello для dpi-desync=fake, на замену стандартному w3.org
  --hostlist=<filename>			; применять дурение только к хостам из листа
 
 Параметры манипуляции могут сочетаться в любых комбинациях.
@@ -999,9 +1001,9 @@ curl можно выкинуть, если для получения ip лист
 Включить автозапуск и службы и запустить ее :
  /etc/init.d/zapret enable
  /etc/init.d/zapret start
-ПРИМЕЧАНИЕ : на этапе старта системы интерфейсы еще не подняты. в некоторых случаях невозможно правильно
-сформировать параметры запуска демонов, не зная имя физического интерфейса LAN.
-Cкрипт из /etc/hotplug.d/iface перезапустит демоны по событию поднятия LAN.
+ПРИМЕЧАНИЕ : на этапе старта системы интерфейсы еще не подняты. Для некоторых демонов это
+может быть критично, они не запустятся после перезагрузки.
+Cкрипт из /etc/hotplug.d/iface запустит недостающие службы при поднятии интерфейса lan.
 
 Создать ссылку на firewall include :
  ln -fs /opt/zapret/init.d/openwrt/firewall.zapret /etc/firewall.zapret

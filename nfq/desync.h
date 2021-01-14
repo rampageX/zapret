@@ -24,5 +24,8 @@ enum dpi_desync_mode {
 	DESYNC_SPLIT2
 };
 
+extern const char *fake_http_request_default;
+extern const uint8_t fake_tls_clienthello_default[517];
+
 void desync_init();
 packet_process_result dpi_desync_packet(uint8_t *data_pkt, size_t len_pkt, struct iphdr *iphdr, struct ip6_hdr *ip6hdr, struct tcphdr *tcphdr, size_t len_tcp, uint8_t *data_payload, size_t len_payload);

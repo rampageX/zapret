@@ -283,6 +283,8 @@ static void exithelp()
 		" --dpi-desync-skip-nosni=0|1\t\t; 1(default)=do not act on ClientHello without SNI (ESNI ?)\n"
 		" --dpi-desync-split-pos=<1..%u>\t; (for disorder only) split TCP packet at specified position\n"
 		" --dpi-desync-any-protocol=0|1\t\t; 0(default)=desync only http and tls  1=desync any nonempty data packet\n"
+		" --dpi-desync-fake-http=<filename>\t; file containing fake http request\n"
+		" --dpi-desync-fake-tls=<filename>\t; file containing fake TLS ClientHello (for https)\n"
 		" --hostlist=<filename>\t\t\t; apply dpi desync only to the listed hosts (one host per line, subdomains auto apply)\n",
 		DPI_DESYNC_FWMARK_DEFAULT,DPI_DESYNC_MAX_FAKE_LEN
 	);
@@ -334,6 +336,10 @@ int main(int argc, char **argv)
 	params.desync_skip_nosni = true;
 	params.desync_split_pos = 3;
 	params.desync_repeats = 1;
+	params.fake_tls_size = sizeof(fake_tls_clienthello_default);
+	memcpy(params.fake_tls,fake_tls_clienthello_default,params.fake_tls_size);
+	params.fake_http_size = strlen(fake_http_request_default);
+	memcpy(params.fake_http,fake_http_request_default,params.fake_http_size);
 
 	const struct option long_options[] = {
 		{"debug",optional_argument,0,0},	// optidx=0
@@ -356,7 +362,9 @@ int main(int argc, char **argv)
 		{"dpi-desync-skip-nosni",optional_argument,0,0},// optidx=17
 		{"dpi-desync-split-pos",required_argument,0,0},// optidx=18
 		{"dpi-desync-any-protocol",optional_argument,0,0},// optidx=19
-		{"hostlist",required_argument,0,0},		// optidx=20
+		{"dpi-desync-fake-http",required_argument,0,0},// optidx=20
+		{"dpi-desync-fake-tls",required_argument,0,0},// optidx=21
+		{"hostlist",required_argument,0,0},		// optidx=22
 		{NULL,0,NULL,0}
 	};
 	if (argc < 2) exithelp();
@@ -511,7 +519,23 @@ int main(int argc, char **argv)
 		case 19: /* dpi-desync-any-protocol */
 			params.desync_any_proto = !optarg || atoi(optarg);
 			break;
-		case 20: /* hostlist */
+		case 20: /* dpi-desync-fake-http */
+			params.fake_http_size = sizeof(params.fake_http);
+			if (!load_file_nonempty(optarg,params.fake_http,&params.fake_http_size))
+			{
+				fprintf(stderr, "could not read %s\n",optarg);
+				exit_clean(1);
+			}
+			break;
+		case 21: /* dpi-desync-fake-tls */
+			params.fake_tls_size = sizeof(params.fake_tls);
+			if (!load_file_nonempty(optarg,params.fake_tls,&params.fake_tls_size))
+			{
+				fprintf(stderr, "could not read %s\n",optarg);
+				exit_clean(1);
+			}
+			break;
+		case 22: /* hostlist */
 			if (!LoadHostList(&params.hostlist, optarg))
 				exit_clean(1);
 			strncpy(params.hostfile,optarg,sizeof(params.hostfile));

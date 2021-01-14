@@ -9,11 +9,11 @@
 #include <string.h>
 
 
-static const char fake_http_request[] = "GET / HTTP/1.1\r\nHost: www.w3.org\r\n"
+const char *fake_http_request_default = "GET / HTTP/1.1\r\nHost: www.w3.org\r\n"
                                         "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:70.0) Gecko/20100101 Firefox/70.0\r\n"
 					"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"
                                         "Accept-Encoding: gzip, deflate\r\n\r\n";
-static const uint8_t fake_https_request[] = {
+const uint8_t fake_tls_clienthello_default[517] = {
     0x16, 0x03, 0x01, 0x02, 0x00, 0x01, 0x00, 0x01, 0xfc, 0x03, 0x03, 0x9a, 0x8f, 0xa7, 0x6a, 0x5d,
     0x57, 0xf3, 0x62, 0x19, 0xbe, 0x46, 0x82, 0x45, 0xe2, 0x59, 0x5c, 0xb4, 0x48, 0x31, 0x12, 0x15,
     0x14, 0x79, 0x2c, 0xaa, 0xcd, 0xea, 0xda, 0xf0, 0xe1, 0xfd, 0xbb, 0x20, 0xf4, 0x83, 0x2a, 0x94,
@@ -88,8 +88,8 @@ packet_process_result dpi_desync_packet(uint8_t *data_pkt, size_t len_pkt, struc
 		if (bIsHttp = IsHttp(data_payload,len_payload))
 		{
 			DLOG("packet contains HTTP request\n")
-			fake = (uint8_t*)fake_http_request;
-			fake_size = sizeof(fake_http_request);
+			fake = params.fake_http;
+			fake_size = params.fake_http_size;
 			if (params.hostlist || params.debug) bHaveHost=HttpExtractHost(data_payload,len_payload,host,sizeof(host));
 			if (params.hostlist && !bHaveHost)
 			{
@@ -100,8 +100,8 @@ packet_process_result dpi_desync_packet(uint8_t *data_pkt, size_t len_pkt, struc
 		else if (IsTLSClientHello(data_payload,len_payload))
 		{
 			DLOG("packet contains TLS ClientHello\n")
-			fake = (uint8_t*)fake_https_request;
-			fake_size = sizeof(fake_https_request);
+			fake = params.fake_tls;
+			fake_size = params.fake_tls_size;
 			if (params.hostlist || params.desync_skip_nosni || params.debug)
 			{
 				bHaveHost=TLSHelloExtractHost(data_payload,len_payload,host,sizeof(host));
