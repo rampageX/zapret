@@ -167,3 +167,8 @@ v33
 
 openwrt : flow offloading support
 config : MODE refactoring
+
+v34
+
+nfqws : dpi-desync 2 mode combos
+nfqws : custom fake http request and tls client hello

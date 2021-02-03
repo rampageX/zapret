@@ -274,7 +274,7 @@ static void exithelp()
 		" --hostspell\t\t\t\t; exact spelling of \"Host\" header. must be 4 chars. default is \"host\"\n"
 		" --hostnospace\t\t\t\t; remove space after Host: and add it to User-Agent: to preserve packet size\n"
 		" --domcase\t\t\t\t; mix domain case : Host: TeSt.cOm\n"
-		" --dpi-desync[=<mode>]\t\t\t; try to desync dpi state. modes : fake rst rstack disorder disorder2 split split2\n"
+		" --dpi-desync[=<mode>][,<mode2>]\t; try to desync dpi state. modes : fake rst rstack disorder disorder2 split split2\n"
 		" --dpi-desync-fwmark=<int|0xHEX>\t; override fwmark for desync packet. default = 0x%08X\n"
 		" --dpi-desync-ttl=<int>\t\t\t; set ttl for desync packet\n"
 		" --dpi-desync-fooling=<mode>[,<mode>]\t; can use multiple comma separated values. modes : none md5sig ts badseq badsum\n"
@@ -309,7 +309,6 @@ static void exit_clean(int code)
 	cleanup_params();
 	exit(code);
 }
-
 
 
 int main(int argc, char **argv)
@@ -438,24 +437,23 @@ int main(int argc, char **argv)
 			params.domcase = true;
 			break;
 		case 11: /* dpi-desync */
-			if (!optarg || !strcmp(optarg,"fake"))
-				params.desync_mode = DESYNC_FAKE;
-			else if (!strcmp(optarg,"rst"))
-				params.desync_mode = DESYNC_RST;
-			else if (!strcmp(optarg,"rstack"))
-				params.desync_mode = DESYNC_RSTACK;
-			else if (!strcmp(optarg,"disorder"))
-				params.desync_mode = DESYNC_DISORDER;
-			else if (!strcmp(optarg,"disorder2"))
-				params.desync_mode = DESYNC_DISORDER2;
-			else if (!strcmp(optarg,"split"))
-				params.desync_mode = DESYNC_SPLIT;
-			else if (!strcmp(optarg,"split2"))
-				params.desync_mode = DESYNC_SPLIT2;
-			else
 			{
-				fprintf(stderr, "invalid dpi-desync mode\n");
-				exit_clean(1);
+				char *mode2;
+				mode2 = optarg ? strchr(optarg,',') : NULL;
+				if (mode2) *mode2++=0;
+
+				params.desync_mode = desync_mode_from_string(optarg);
+				params.desync_mode2 = desync_mode_from_string(mode2);
+				if (params.desync_mode==DESYNC_NONE || params.desync_mode==DESYNC_INVALID || params.desync_mode2==DESYNC_INVALID)
+				{
+					fprintf(stderr, "invalid dpi-desync mode\n");
+					exit_clean(1);
+				}
+				if (params.desync_mode2 && !(desync_valid_first_stage(params.desync_mode) && desync_valid_second_stage(params.desync_mode2)))
+				{
+					fprintf(stderr, "invalid desync combo : %s+%s\n", optarg,mode2);
+					exit_clean(1);
+				}
 			}
 			break;
 		case 12: /* dpi-desync */

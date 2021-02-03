@@ -15,6 +15,7 @@
 
 enum dpi_desync_mode {
 	DESYNC_NONE=0,
+	DESYNC_INVALID,
 	DESYNC_FAKE,
 	DESYNC_RST,
 	DESYNC_RSTACK,
@@ -26,6 +27,10 @@ enum dpi_desync_mode {
 
 extern const char *fake_http_request_default;
 extern const uint8_t fake_tls_clienthello_default[517];
+
+enum dpi_desync_mode desync_mode_from_string(const char *s);
+bool desync_valid_first_stage(enum dpi_desync_mode mode);
+bool desync_valid_second_stage(enum dpi_desync_mode mode);
 
 void desync_init();
 packet_process_result dpi_desync_packet(uint8_t *data_pkt, size_t len_pkt, struct iphdr *iphdr, struct ip6_hdr *ip6hdr, struct tcphdr *tcphdr, size_t len_tcp, uint8_t *data_payload, size_t len_payload);

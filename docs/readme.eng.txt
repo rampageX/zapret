@@ -229,6 +229,11 @@ iptables -t mangle -I POSTROUTING -o <external_interface> -p tcp --dport 80 -m m
 
 mark is needed to keep away generated packets from NFQUEUE. nfqws sets fwmark when it sends generated packets.
 
+DESYNC COMBOS
+dpi-desync parameter can take 2 comma separated arguments.
+1st phase mode can be fake,rst,rstack, 2nd phase mode - disorder,disorder2,split,split2.
+Can be useful for ISPs with more than one DPI.
+
 VIRTUAL MACHINES
 Most of nfqws packet magic does not work from VMs powered by virtualbox and vmware when network is NATed.
 Hypervisor forcibly changes ttl and does not forward fake packets.
