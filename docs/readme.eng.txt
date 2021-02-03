@@ -229,6 +229,12 @@ iptables -t mangle -I POSTROUTING -o <external_interface> -p tcp --dport 80 -m m
 
 mark is needed to keep away generated packets from NFQUEUE. nfqws sets fwmark when it sends generated packets.
 
+VIRTUAL MACHINES
+Most of nfqws packet magic does not work from VMs powered by virtualbox and vmware when network is NATed.
+Hypervisor forcibly changes ttl and does not forward fake packets.
+Set up bridge networking.
+
+
 tpws
 -----
 
