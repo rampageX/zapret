@@ -86,7 +86,10 @@ iptables -t mangle -I POSTROUTING -o <external_interface> -p tcp --dport 80 -m s
 Some DPIs catch only the first http request, ignoring subsequent requests in a keep-alive session.
 Then we can reduce CPU load, refusing to process unnecessary packets.
 
-iptables -t mangle -I POSTROUTING -o <external_interface> -p tcp --dport 80 -m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4 -m set --match-set zapret dst -j NFQUEUE --queue-num 200 --queue-bypass
+iptables -t mangle -I POSTROUTING -o <внешний_интерфейс> -p tcp --dport 80 -m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4 -m mark ! --mark 0x40000000/0x40000000 -m set --match-set zapret dst -j NFQUEUE --queue-num 200 --queue-bypass
+
+Mark filter does not allow nfqws-generated packets to enter the queue again.
+Its necessary to use this filter when also using "connbytes 2:4". Without it packet ordering can be changed breaking the whole idea.
 
 
 ip6tables
@@ -228,6 +231,8 @@ iptables -t mangle -I POSTROUTING -o <external_interface> -p tcp --dport 443 -m 
 iptables -t mangle -I POSTROUTING -o <external_interface> -p tcp --dport 80 -m mark ! --mark 0x40000000/0x40000000 -j NFQUEUE --queue-num 200 --queue-bypass
 
 mark is needed to keep away generated packets from NFQUEUE. nfqws sets fwmark when it sends generated packets.
+nfqws can internally filter marked packets. but when connbytes filter is used without mark filter
+packet ordering can be changed breaking the whole idea of desync attack.
 
 DESYNC COMBOS
 dpi-desync parameter can take 2 comma separated arguments.

@@ -221,24 +221,24 @@ packet_process_result dpi_desync_packet(uint8_t *data_pkt, size_t len_pkt, struc
 		switch(desync_mode)
 		{
 			case DESYNC_FAKE:
-				DLOG("sending fake request\n");
 				if (!prepare_tcp_segment((struct sockaddr *)&src, (struct sockaddr *)&dst, flags_orig, tcphdr->seq, tcphdr->ack_seq, tcphdr->window, timestamps,
 					ttl_fake,params.desync_tcp_fooling_mode,
 					fake, fake_size, newdata, &newlen))
 				{
 					return res;
 				}
+				DLOG("sending fake request\n");
 				b = true;
 				break;
 			case DESYNC_RST:
 			case DESYNC_RSTACK:
-				DLOG("sending fake RST/RSTACK\n");
 				if (!prepare_tcp_segment((struct sockaddr *)&src, (struct sockaddr *)&dst, TH_RST | (desync_mode==DESYNC_RSTACK ? TH_ACK:0), tcphdr->seq, tcphdr->ack_seq, tcphdr->window, timestamps,
 					ttl_fake,params.desync_tcp_fooling_mode,
 					NULL, 0, newdata, &newlen))
 				{
 					return res;
 				}
+				DLOG("sending fake RST/RSTACK\n");
 				b = true;
 				break;
 		}

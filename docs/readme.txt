@@ -107,7 +107,11 @@ iptables -t mangle -I POSTROUTING -o <внешний_интерфейс> -p tcp 
 DPI может ловить только первый http запрос, игнорируя последующие запросы в keep-alive сессии.
 Тогда можем уменьшить нагрузку на проц, отказавшись от процессинга ненужных пакетов.
 
-iptables -t mangle -I POSTROUTING -o <внешний_интерфейс> -p tcp --dport 80 -m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4 -m set --match-set zapret dst -j NFQUEUE --queue-num 200 --queue-bypass
+iptables -t mangle -I POSTROUTING -o <внешний_интерфейс> -p tcp --dport 80 -m connbytes --connbytes-dir=original --connbytes-mode=packets --connbytes 2:4 -m mark ! --mark 0x40000000/0x40000000 -m set --match-set zapret dst -j NFQUEUE --queue-num 200 --queue-bypass
+
+Фильтр по mark нужен для отсечения от очереди пакетов, сгенерированных внутри nfqws.
+Если применяется фильтр по connbytes 2:4, то обязательно добавлять в iptables и фильтр по mark. Иначе возможно
+перепутывания порядка следования пакетов, что приведет к неработоспособности метода.
 
 
 Если ваше устройство поддерживает аппаратное ускорение (flow offloading, hardware nat, hardware acceleration), то iptables могут не работать.
@@ -274,7 +278,12 @@ iptables -t mangle -I POSTROUTING -o <внешний_интерфейс> -p tcp 
 iptables -t mangle -I POSTROUTING -o <внешний_интерфейс> -p tcp --dport 80 -m mark ! --mark 0x40000000/0x40000000 -j NFQUEUE --queue-num 200 --queue-bypass
 
 mark нужен, чтобы сгенерированный поддельный пакет не попал опять к нам на обработку. nfqws выставляет fwmark при его отсылке.
-nfqws способен самостоятельно различать помеченные пакеты, фильтр в iptables по mark нужен только для увеличения скорости.
+хотя nfqws способен самостоятельно различать помеченные пакеты, фильтр в iptables по mark нужен при использовании connbytes,
+чтобы не допустить изменения порядка следования пакетов. Процессинг очереди - процесс отложенный.
+Если ядро имеет пакеты на отсылку вне очереди - оно их отправляет незамедлительно.
+Изменения правильного порядка следования пакетов при десинхронизации ломает всю идею.
+При отсутствии ограничения на connbytes, атака будет работать и без фильтра по mark.
+Но лучше его все же оставить для увеличения скорости.
 
 Почему --connbytes 2:4 : 2 - иногда данные идут в 3-м пакете 3-way handshake. 3 - стандартная ситуация. 4 - для надежности. на случай, если выполнялась одна ретрансмиссия
 

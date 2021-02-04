@@ -174,7 +174,11 @@ static packet_process_result processPacketData(uint8_t *data_pkt, size_t len_pkt
 	packet_process_result res = pass, res2;
 	uint8_t proto;
 
-	if (*mark & params.desync_fwmark) return res;
+	if (*mark & params.desync_fwmark)
+	{
+		DLOG("ignoring generated packet\n")
+		return res;
+	}
 
 	if (proto_check_ipv4(data, len))
 	{
