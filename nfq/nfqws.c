@@ -274,7 +274,7 @@ static void exithelp()
 		" --hostspell\t\t\t\t; exact spelling of \"Host\" header. must be 4 chars. default is \"host\"\n"
 		" --hostnospace\t\t\t\t; remove space after Host: and add it to User-Agent: to preserve packet size\n"
 		" --domcase\t\t\t\t; mix domain case : Host: TeSt.cOm\n"
-		" --dpi-desync[=<mode>][,<mode2>]\t; try to desync dpi state. modes : fake rst rstack disorder disorder2 split split2\n"
+		" --dpi-desync=<mode>[,<mode2>]\t\t; try to desync dpi state. modes : fake rst rstack disorder disorder2 split split2\n"
 		" --dpi-desync-fwmark=<int|0xHEX>\t; override fwmark for desync packet. default = 0x%08X\n"
 		" --dpi-desync-ttl=<int>\t\t\t; set ttl for desync packet\n"
 		" --dpi-desync-fooling=<mode>[,<mode>]\t; can use multiple comma separated values. modes : none md5sig ts badseq badsum\n"
@@ -352,7 +352,7 @@ int main(int argc, char **argv)
 		{"hostspell",required_argument,0,0},	// optidx=8
 		{"hostnospace",no_argument,0,0},	// optidx=9
 		{"domcase",no_argument,0,0 },		// optidx=10
-		{"dpi-desync",optional_argument,0,0},		// optidx=11
+		{"dpi-desync",required_argument,0,0},		// optidx=11
 		{"dpi-desync-fwmark",required_argument,0,0},	// optidx=12
 		{"dpi-desync-ttl",required_argument,0,0},	// optidx=13
 		{"dpi-desync-fooling",required_argument,0,0},	// optidx=14
