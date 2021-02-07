@@ -8,7 +8,7 @@
 #include <string.h>
 
 const char *http_methods[] = { "GET /","POST /","HEAD /","OPTIONS /","PUT /","DELETE /","CONNECT /","TRACE /",NULL };
-bool IsHttp(const char *data, size_t len)
+bool IsHttp(const uint8_t *data, size_t len)
 {
 	const char **method;
 	size_t method_len;

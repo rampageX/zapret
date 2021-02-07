@@ -30,6 +30,7 @@
 
 // keep separate legs counter. counting every time thousands of legs can consume cpu
 static int legs_local, legs_remote;
+/*
 static void count_legs(struct tailhead *conn_list)
 {
 	tproxy_conn_t *conn = NULL;
@@ -39,6 +40,7 @@ static void count_legs(struct tailhead *conn_list)
 		conn->remote ? legs_remote++ : legs_local++;
 	
 }
+*/
 static void print_legs()
 {
 	VPRINT("Legs : local:%d remote:%d", legs_local, legs_remote)
@@ -141,7 +143,7 @@ static bool send_buffer_create(send_buffer_t *sb, char *data, size_t len)
 	sb->pos = 0;
 	return true;
 }
-static bool send_buffer_free(send_buffer_t *sb)
+static void send_buffer_free(send_buffer_t *sb)
 {
 	if (sb->data)
 	{
@@ -238,7 +240,7 @@ static bool conn_has_unsent(tproxy_conn_t *conn)
 static int conn_bytes_unread(tproxy_conn_t *conn)
 {
 	int numbytes=-1;
-	ioctl(conn->fd, FIONREAD, &numbytes)!=-1;
+	ioctl(conn->fd, FIONREAD, &numbytes);
 	return numbytes;
 }
 static bool conn_has_unsent_pair(tproxy_conn_t *conn)
@@ -342,7 +344,8 @@ static void dbgprint_socket_buffers(int fd)
 {
 	if (params.debug>=2)
 	{
-		int v,sz;
+		int v;
+		socklen_t sz;
 		sz=sizeof(int);
 		if (!getsockopt(fd,SOL_SOCKET,SO_RCVBUF,&v,&sz))
 			DBGPRINT("fd=%d SO_RCVBUF=%d",fd,v)
@@ -561,7 +564,6 @@ static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,
 	struct sockaddr_storage orig_dst;
 	tproxy_conn_t *conn;
 	int remote_fd=0;
-	int yes=1;
 
 	if (proxy_type==CONN_TYPE_TRANSPARENT)
 	{
@@ -660,7 +662,6 @@ static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,
 //Returns true if successfull, false if not
 static bool check_connection_attempt(tproxy_conn_t *conn, int efd)
 {
-	int fd_flags = 0;
 	int errn = 0;
 	socklen_t optlen = sizeof(errn);
 
@@ -886,7 +887,6 @@ static bool handle_proxy_mode(tproxy_conn_t *conn, struct tailhead *conn_list)
 					DBGPRINT("S_WAIT_REQUEST")
 					{
 						s5_req *m = (s5_req*)buf;
-						char str[64];
 
 						if (!S5_REQ_HEADER_VALID(m,rd))
 						{

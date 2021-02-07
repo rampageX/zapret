@@ -304,8 +304,7 @@ int main(int argc, char **argv)
 	else // ipv4
 	{
 		uint32_t u1,u2,u3,u4, u11,u22,u33,u44, ip;
-		uint32_t *iplist = NULL, *iplist_new;
-		uint32_t i, subnet_ct, end_ip;
+		uint32_t *iplist = NULL, *iplist_new, i;
 
 		while (fgets(str, sizeof(str), stdin))
 		{

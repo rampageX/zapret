@@ -29,7 +29,7 @@ bool prepare_tcp_segment4(
 	uint8_t ttl,
 	uint8_t fooling,
 	const void *data, uint16_t len,
-	char *buf, size_t *buflen);
+	uint8_t *buf, size_t *buflen);
 bool prepare_tcp_segment6(
 	const struct sockaddr_in6 *src, const struct sockaddr_in6 *dst,
 	uint8_t tcp_flags,
@@ -39,7 +39,7 @@ bool prepare_tcp_segment6(
 	uint8_t ttl,
 	uint8_t fooling,
 	const void *data, uint16_t len,
-	char *buf, size_t *buflen);
+	uint8_t *buf, size_t *buflen);
 bool prepare_tcp_segment(
 	const struct sockaddr *src, const struct sockaddr *dst,
 	uint8_t tcp_flags,
@@ -49,7 +49,7 @@ bool prepare_tcp_segment(
 	uint8_t ttl,
 	uint8_t fooling,
 	const void *data, uint16_t len,
-	char *buf, size_t *buflen);
+	uint8_t *buf, size_t *buflen);
 
 void extract_endpoints(const struct iphdr *iphdr,const struct ip6_hdr *ip6hdr,const struct tcphdr *tcphdr, struct sockaddr_storage *src, struct sockaddr_storage *dst);
 uint8_t *tcp_find_option(struct tcphdr *tcp, uint8_t kind);

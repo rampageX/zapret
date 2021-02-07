@@ -167,7 +167,7 @@ bool prepare_tcp_segment4(
 	uint8_t ttl,
 	uint8_t fooling,
 	const void *data, uint16_t len,
-	char *buf, size_t *buflen)
+	uint8_t *buf, size_t *buflen)
 {
 	uint16_t tcpoptlen = tcpopt_len(fooling,timestamps);
 	uint16_t pktlen = sizeof(struct iphdr) + sizeof(struct tcphdr) + tcpoptlen  + len;
@@ -210,7 +210,7 @@ bool prepare_tcp_segment6(
 	uint8_t ttl,
 	uint8_t fooling,
 	const void *data, uint16_t len,
-	char *buf, size_t *buflen)
+	uint8_t *buf, size_t *buflen)
 {
 	uint16_t tcpoptlen = tcpopt_len(fooling,timestamps);
 	uint16_t payloadlen = sizeof(struct tcphdr) + tcpoptlen + len;
@@ -250,7 +250,7 @@ bool prepare_tcp_segment(
 	uint8_t ttl,
 	uint8_t fooling,
 	const void *data, uint16_t len,
-	char *buf, size_t *buflen)
+	uint8_t *buf, size_t *buflen)
 {
 	return (src->sa_family==AF_INET && dst->sa_family==AF_INET) ?
 		prepare_tcp_segment4((struct sockaddr_in *)src,(struct sockaddr_in *)dst,tcp_flags,seq,ack_seq,wsize,timestamps,ttl,fooling,data,len,buf,buflen) :

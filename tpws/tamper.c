@@ -212,13 +212,13 @@ void modify_tcp_segment(char *segment,size_t segment_buffer_size,size_t *size,si
 	else if (params.split_pos && params.split_pos < *size)
 	{
 		// split-pos is the only parameter applicable to non-http block (may be https ?)
-		if (IsTLSClientHello(segment,*size))
+		if (IsTLSClientHello((uint8_t*)segment,*size))
 		{
 			char host[256];
 
 			VPRINT("packet contains TLS ClientHello")
 			// we need host only if hostlist is present
-			if (params.hostlist && TLSHelloExtractHost(segment,*size,host,sizeof(host)))
+			if (params.hostlist && TLSHelloExtractHost((uint8_t*)segment,*size,host,sizeof(host)))
 			{
 				VPRINT("hostname: %s",host)
 				if (!SearchHostList(params.hostlist,host,!!params.debug))

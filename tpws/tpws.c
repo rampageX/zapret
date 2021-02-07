@@ -518,10 +518,12 @@ static bool find_listen_addr(struct sockaddr_storage *salisten, const char *bind
 	return found;
 }
 
+
 static bool set_ulimit()
 {
 	FILE *F;
 	int n;
+	uintmax_t um;
 	rlim_t fdmax,fdmin_system,cur_lim=0;
 
 	if (!params.maxfiles)
@@ -535,14 +537,15 @@ static bool set_ulimit()
 	else
 		fdmax = params.maxfiles;
 	fdmin_system = fdmax + 4096;
-	DBGPRINT("set_ulimit : fdmax=%llu fdmin_system=%llu",fdmax,fdmin_system)
+	DBGPRINT("set_ulimit : fdmax=%ju fdmin_system=%ju",(uintmax_t)fdmax,(uintmax_t)fdmin_system)
 
 	if (!(F=fopen("/proc/sys/fs/file-max","r")))
 		return false;
-	n=fscanf(F,"%llu",&cur_lim);
+	n=fscanf(F,"%ju",&um);
 	fclose(F);
 	if (!n)	return false;
-	DBGPRINT("set_ulimit : current system file-max=%llu",cur_lim)
+	cur_lim = (rlim_t)um;
+	DBGPRINT("set_ulimit : current system file-max=%ju",(uintmax_t)cur_lim)
 	if (cur_lim<fdmin_system)
 	{
 		DBGPRINT("set_ulimit : system fd limit is too low. trying to increase")
@@ -551,7 +554,7 @@ static bool set_ulimit()
 			fprintf(stderr,"set_ulimit : could not open /proc/sys/fs/file-max for write\n");
 			return false;
 		}
-		n=fprintf(F,"%llu",fdmin_system);
+		n=fprintf(F,"%ju",(uintmax_t)fdmin_system);
 		fclose(F);
 		if (!n)
 		{
@@ -574,7 +577,7 @@ struct salisten_s
 };
 int main(int argc, char *argv[])
 {
-	int i, listen_fd[MAX_BINDS], yes = 1, retval = 0, r, if_index, exit_v=EXIT_FAILURE;
+	int i, listen_fd[MAX_BINDS], yes = 1, retval = 0, if_index, exit_v=EXIT_FAILURE;
 	struct salisten_s list[MAX_BINDS];
 
 	srand(time(NULL));
@@ -733,8 +736,8 @@ int main(int argc, char *argv[])
 		if (!params.local_rcvbuf)
 		{
 			// HACK : dont know why but if dont set RCVBUF explicitly RCVBUF of accept()-ed socket can be very large. may be linux bug ?
-			int v,sz;
-			sz=sizeof(int);
+			int v;
+			socklen_t sz=sizeof(int);
 			if (!getsockopt(listen_fd[i],SOL_SOCKET,SO_RCVBUF,&v,&sz))
 			{
 				v/=2;
