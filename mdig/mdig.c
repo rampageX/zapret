@@ -281,7 +281,7 @@ static void exithelp()
 }
 int main(int argc, char **argv)
 {
-	int ret, v, option_index = 0;
+	int v, option_index = 0;
 
 	static const struct option long_options[] = {
 			{"threads",required_argument,0,0},	// optidx=0
