@@ -8,12 +8,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-#include <linux/netfilter_ipv4.h>
+#ifdef __linux__
+ #include <linux/netfilter_ipv4.h>
+#endif
 #include <ifaddrs.h>
 #include <netdb.h>
 
@@ -421,6 +424,7 @@ static int connect_remote(const struct sockaddr *remote_addr)
 	return remote_fd;
 }
 
+#ifdef __linux__
 //Store the original destination address in remote_addr
 //Return 0 on success, <0 on failure
 static bool get_dest_addr(int sockfd, struct sockaddr_storage *orig_dst)
@@ -462,6 +466,7 @@ static bool get_dest_addr(int sockfd, struct sockaddr_storage *orig_dst)
 	}
 	return true;
 }
+#endif
 
 //Free resources occupied by this connection
 static void free_conn(tproxy_conn_t *conn)
@@ -493,6 +498,7 @@ static tproxy_conn_t *new_conn(int fd, bool remote)
 	conn->fd = fd;
 	conn->remote = remote;
 
+#ifdef SPLICE_PRESENT
 	// if dont tamper - both legs are spliced, create 2 pipes
 	// otherwise create pipe only in local leg
 	if((!params.tamper || !remote) && pipe2(conn->splice_pipe, O_NONBLOCK) != 0)
@@ -501,6 +507,7 @@ static tproxy_conn_t *new_conn(int fd, bool remote)
 		free_conn(conn);
 		return NULL;
 	}
+#endif
 	
 	return conn;
 }
@@ -567,6 +574,7 @@ static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,
 
 	if (proxy_type==CONN_TYPE_TRANSPARENT)
 	{
+#ifdef __linux__
 		if(!get_dest_addr(local_fd, &orig_dst))
 		{
 			fprintf(stderr, "Could not get destination address\n");
@@ -580,6 +588,9 @@ static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,
 			close(local_fd);
 			return NULL;
 		}
+#else
+		return NULL;
+#endif
 	}
 
 	// socket buffers inherited from listen_fd
@@ -721,6 +732,7 @@ static bool handle_unsent(tproxy_conn_t *conn)
 
 	DBGPRINT("+handle_unsent, fd=%d has_unsent=%d has_unsent_partner=%d",conn->fd,conn_has_unsent(conn),conn_partner_alive(conn) ? conn_has_unsent(conn->partner) : false)
 	
+#ifdef SPLICE_PRESENT
 	if (conn->wr_unsent)
 	{
 		wr = splice(conn->splice_pipe[0], NULL, conn->fd, NULL, conn->wr_unsent, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
@@ -734,6 +746,7 @@ static bool handle_unsent(tproxy_conn_t *conn)
 		conn->twr += wr;
 		conn->wr_unsent -= wr;
 	}
+#endif
 	if (!conn->wr_unsent && conn_buffers_present(conn))
 	{
 		wr=conn_buffers_send(conn);
@@ -974,6 +987,9 @@ static bool handle_proxy_mode(tproxy_conn_t *conn, struct tailhead *conn_list)
 				case S_WAIT_CONNECTION:
 					DBGPRINT("socks received message while in S_WAIT_CONNECTION. hanging up")
 					break;
+				default:
+					DBGPRINT("socks received message while in an unexpected connection state")
+					break;
 			}
 			break;
 	}
@@ -1031,6 +1047,7 @@ static bool handle_epoll(tproxy_conn_t *conn, struct tailhead *conn_list, uint32
 	DBGPRINT("numbytes=%d",numbytes)
 	if (numbytes>0)
 	{
+#ifdef SPLICE_PRESENT
 		if (!params.tamper || conn->remote)
 		{
 			// incoming data from remote leg we splice without touching
@@ -1055,6 +1072,7 @@ static bool handle_epoll(tproxy_conn_t *conn, struct tailhead *conn_list, uint32
 			}
 		}
 		else
+#endif
 		{
 			// incoming data from local leg
 			char buf[RD_BLOCK_SIZE + 4];
@@ -1069,6 +1087,9 @@ static bool handle_epoll(tproxy_conn_t *conn, struct tailhead *conn_list, uint32
 				size_t split_pos=0;
 
 				bs = rd;
+#ifndef SPLICE_PRESENT
+				if (!conn->remote && params.tamper)
+#endif
 				modify_tcp_segment(buf,sizeof(buf),&bs,&split_pos);
 
 				if (split_pos)
@@ -1111,7 +1132,7 @@ static bool remove_closed_connections(int efd, struct tailhead *close_list)
 	tproxy_conn_t *conn = NULL;
 	bool bRemoved = false;
 
-	while (conn = TAILQ_FIRST(close_list))
+	while ((conn = TAILQ_FIRST(close_list)))
 	{
 		TAILQ_REMOVE(close_list, conn, conn_ptrs);
 

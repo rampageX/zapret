@@ -25,6 +25,11 @@
 #include <time.h>
 
 #include "tpws.h"
+
+#ifdef BSD
+ #include <sys/sysctl.h>
+#endif
+
 #include "tpws_conn.h"
 #include "hostlist.h"
 #include "params.h"
@@ -474,7 +479,10 @@ void parse_params(int argc, char *argv[])
 }
 
 
-
+static bool is_linklocal(const struct sockaddr_in6* a)
+{
+	return a->sin6_addr.s6_addr[0]==0xFE && (a->sin6_addr.s6_addr[1] & 0xC0)==0x80;
+}
 static bool find_listen_addr(struct sockaddr_storage *salisten, const char *bindiface, bool bind_if6, bool bindll, int *if_index)
 {
 	struct ifaddrs *addrs,*a;
@@ -483,56 +491,106 @@ static bool find_listen_addr(struct sockaddr_storage *salisten, const char *bind
 	if (getifaddrs(&addrs)<0)
 		return false;
 
-	a  = addrs;
-	while (a)
+	int maxpass = (bind_if6 && !bindll) ? 2 : 1;
+	for(int pass=0;pass<maxpass;pass++)
 	{
-		if (a->ifa_addr)
+		a  = addrs;
+		while (a)
 		{
-			if (a->ifa_addr->sa_family==AF_INET &&
-			    *bindiface && !bind_if6 && !strcmp(a->ifa_name, bindiface))
+			if (a->ifa_addr)
 			{
-				salisten->ss_family = AF_INET;
-				memcpy(&((struct sockaddr_in*)salisten)->sin_addr, &((struct sockaddr_in*)a->ifa_addr)->sin_addr, sizeof(struct in_addr));
-				found=true;
-				break;
+				if (a->ifa_addr->sa_family==AF_INET &&
+				    *bindiface && !bind_if6 && !strcmp(a->ifa_name, bindiface))
+				{
+					salisten->ss_family = AF_INET;
+					memcpy(&((struct sockaddr_in*)salisten)->sin_addr, &((struct sockaddr_in*)a->ifa_addr)->sin_addr, sizeof(struct in_addr));
+					found=true;
+					goto ex;
+				}
+				// ipv6 links locals are fe80::/10
+				else if (a->ifa_addr->sa_family==AF_INET6
+				          &&
+				         (!*bindiface && bindll ||
+				          *bindiface && bind_if6 && !strcmp(a->ifa_name, bindiface))
+				          &&
+					 (bindll && is_linklocal((struct sockaddr_in6*)a->ifa_addr) ||
+					  !bindll && (pass || !is_linklocal((struct sockaddr_in6*)a->ifa_addr)))
+					)
+				{
+					salisten->ss_family = AF_INET6;
+					memcpy(&((struct sockaddr_in6*)salisten)->sin6_addr, &((struct sockaddr_in6*)a->ifa_addr)->sin6_addr, sizeof(struct in6_addr));
+					if (if_index) *if_index = if_nametoindex(a->ifa_name);
+					found=true;
+					goto ex;
+				}
 			}
-			// ipv6 links locals are fe80::/10
-			else if (a->ifa_addr->sa_family==AF_INET6
-			          &&
-			         (!*bindiface && bindll ||
-			          *bindiface && bind_if6 && !strcmp(a->ifa_name, bindiface))
-			          &&
-				 (!bindll ||
-				  ((struct sockaddr_in6*)a->ifa_addr)->sin6_addr.s6_addr[0]==0xFE &&
-				  (((struct sockaddr_in6*)a->ifa_addr)->sin6_addr.s6_addr[1] & 0xC0)==0x80))
-			{
-				salisten->ss_family = AF_INET6;
-				memcpy(&((struct sockaddr_in6*)salisten)->sin6_addr, &((struct sockaddr_in6*)a->ifa_addr)->sin6_addr, sizeof(struct in6_addr));
-				if (if_index) *if_index = if_nametoindex(a->ifa_name);
-				found=true;
-				break;
-			}
+			a = a->ifa_next;
 		}
-		a = a->ifa_next;
 	}
+ex:
 	freeifaddrs(addrs);
 	return found;
 }
 
-
-static bool set_ulimit()
+static bool read_system_maxfiles(rlim_t *maxfile)
 {
+#ifdef __linux__
 	FILE *F;
 	int n;
 	uintmax_t um;
+	if (!(F=fopen("/proc/sys/fs/file-max","r")))
+		return false;
+	n=fscanf(F,"%ju",&um);
+	fclose(F);
+	if (!n)	return false;
+	*maxfile = (rlim_t)um;
+	return true;
+#elif defined(BSD)
+	int maxfiles,mib[2]={CTL_KERN, KERN_MAXFILES};
+	size_t len = sizeof(maxfiles);
+	if (sysctl(mib,2,&maxfiles,&len,NULL,0)==-1)
+		return false;
+	*maxfile = (rlim_t)maxfiles;
+	return true;
+#else
+	return false;
+#endif
+}
+static bool write_system_maxfiles(rlim_t maxfile)
+{
+#ifdef __linux__
+	FILE *F;
+	int n;
+	if (!(F=fopen("/proc/sys/fs/file-max","w")))
+		return false;
+	n=fprintf(F,"%ju",(uintmax_t)maxfile);
+	fclose(F);
+	return !!n;
+#elif defined(BSD)
+	int maxfiles=(int)maxfile,mib[2]={CTL_KERN, KERN_MAXFILES};
+	if (sysctl(mib,2,NULL,0,&maxfiles,sizeof(maxfiles))==-1)
+		return false;
+	return true;
+#else
+	return false;
+#endif
+}
+
+static bool set_ulimit()
+{
 	rlim_t fdmax,fdmin_system,cur_lim=0;
+	int n;
 
 	if (!params.maxfiles)
 	{
 		// 4 fds per tamper connection (2 pipe + 2 socket), 6 fds for tcp proxy connection (4 pipe + 2 socket)
 		// additional 1/2 for unpaired remote legs sending buffers
 		// 16 for listen_fd, epoll, hostlist, ...
+#ifdef SPLICE_PRESENT
 		fdmax = (params.tamper ? 4 : 6) * params.maxconn;
+#else
+		fdmax = 2 * params.maxconn;
+#endif
 		fdmax += fdmax/2 + 16;
 	}
 	else
@@ -540,26 +598,15 @@ static bool set_ulimit()
 	fdmin_system = fdmax + 4096;
 	DBGPRINT("set_ulimit : fdmax=%ju fdmin_system=%ju",(uintmax_t)fdmax,(uintmax_t)fdmin_system)
 
-	if (!(F=fopen("/proc/sys/fs/file-max","r")))
+	if (!read_system_maxfiles(&cur_lim))
 		return false;
-	n=fscanf(F,"%ju",&um);
-	fclose(F);
-	if (!n)	return false;
-	cur_lim = (rlim_t)um;
 	DBGPRINT("set_ulimit : current system file-max=%ju",(uintmax_t)cur_lim)
 	if (cur_lim<fdmin_system)
 	{
-		DBGPRINT("set_ulimit : system fd limit is too low. trying to increase")
-		if (!(F=fopen("/proc/sys/fs/file-max","w")))
+		DBGPRINT("set_ulimit : system fd limit is too low. trying to increase to %jd",(uintmax_t)fdmin_system)
+		if (!write_system_maxfiles(fdmin_system))
 		{
-			fprintf(stderr,"set_ulimit : could not open /proc/sys/fs/file-max for write\n");
-			return false;
-		}
-		n=fprintf(F,"%ju",(uintmax_t)fdmin_system);
-		fclose(F);
-		if (!n)
-		{
-			fprintf(stderr,"set_ulimit : could not write to /proc/sys/fs/file-max\n");
+			fprintf(stderr,"could not set system-wide max file descriptors\n");
 			return false;
 		}
 	}
@@ -683,7 +730,8 @@ int main(int argc, char *argv[])
 		{
 			list[i].salisten_len = sizeof(struct sockaddr_in6);
 			((struct sockaddr_in6*)(&list[i].salisten))->sin6_port = htons(params.port);
-			((struct sockaddr_in6*)(&list[i].salisten))->sin6_scope_id = if_index;
+			if (is_linklocal((struct sockaddr_in6*)(&list[i].salisten)))
+				((struct sockaddr_in6*)(&list[i].salisten))->sin6_scope_id = if_index;
 		}
 		else
 		{
@@ -709,11 +757,14 @@ int main(int argc, char *argv[])
 			perror("socket: ");
 			goto exiterr;
 		}
+#ifndef __OpenBSD__
+// in OpenBSD always IPV6_ONLY for wildcard sockets
 		if ((list[i].salisten.ss_family == AF_INET6) && setsockopt(listen_fd[i], IPPROTO_IPV6, IPV6_V6ONLY, &list[i].ipv6_only, sizeof(int)) == -1)
 		{
 			perror("setsockopt (IPV6_ONLY): ");
 			goto exiterr;
 		}
+#endif
 
 		if (setsockopt(listen_fd[i], SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
 		{
@@ -725,11 +776,16 @@ int main(int argc, char *argv[])
 		//This allows the socket to accept connections for non-local IPs
 		if (params.proxy_type==CONN_TYPE_TRANSPARENT)
 		{
+		#ifdef __linux__
 			if (setsockopt(listen_fd[i], SOL_IP, IP_TRANSPARENT, &yes, sizeof(yes)) == -1)
 			{
 				perror("setsockopt (IP_TRANSPARENT): ");
 				goto exiterr;
 			}
+		#else
+			fprintf(stderr, "transparent sockets supported only in linux\n");
+			goto exiterr;
+		#endif
 		}
 
 		if (!set_socket_buffers(listen_fd[i], params.local_rcvbuf, params.local_sndbuf))

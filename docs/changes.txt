@@ -173,3 +173,7 @@ v34
 nfqws : dpi-desync 2 mode combos
 nfqws : dpi-desync without parameter no more supported. previously it meant "fake"
 nfqws : custom fake http request and tls client hello
+
+v35
+
+limited FreeBSD and OpenBSD support

@@ -528,6 +528,16 @@ chmod 755 /data/local/tmp/zapret /data/local/tmp/zapret/tpws
 chcon u:object_r:system_file:s0 /data/local/tmp/zapret/tpws
 Now its possible to run /data/local/tmp/zapret/tpws from any app such as tasker.
 
+
+FreeBSD, OpenBSD
+----------------
+
+mdig, ip2net, tpws can be compiled in FreeBSD and OpenBSD
+tpws does not support transparent mode. only socks mode is supported.
+nfqws is not compatible
+to compile tpws use : 'make bsd'. not just 'make'
+in openbsd default bind is ipv6 only. to bind to ipv4 specify --bind-addr=0.0.0.0
+
 Windows (WSL)
 -------------
 
