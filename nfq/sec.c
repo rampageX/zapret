@@ -1,12 +1,17 @@
-#include "sec.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/prctl.h>
+#include "sec.h"
 #include <unistd.h>
 #include <fcntl.h>
 
+#ifdef __linux__
+
+#include <sys/prctl.h>
+
 bool checkpcap(uint64_t caps)
 {
+	if (!caps) return true; // no special caps reqd
+
 	struct __user_cap_header_struct ch = {_LINUX_CAPABILITY_VERSION_3, getpid()};
 	struct __user_cap_data_struct cd[2];
 	uint32_t c0 = (uint32_t)caps;
@@ -32,7 +37,7 @@ int getmaxcap()
 	FILE *F = fopen("/proc/sys/kernel/cap_last_cap", "r");
 	if (F)
 	{
-		int n = fscanf(F, "%d", &maxcap);
+		fscanf(F, "%d", &maxcap);
 		fclose(F);
 	}
 	return maxcap;
@@ -62,15 +67,18 @@ bool dropcaps()
 	}
 	return true;
 }
+#endif
 bool droproot(uid_t uid, gid_t gid)
 {
 	if (uid || gid)
 	{
+#ifdef __linux__
 		if (prctl(PR_SET_KEEPCAPS, 1L))
 		{
 			perror("prctl(PR_SET_KEEPCAPS): ");
 			return false;
 		}
+#endif
 		if (setgid(gid))
 		{
 			perror("setgid: ");
@@ -82,7 +90,11 @@ bool droproot(uid_t uid, gid_t gid)
 			return false;
 		}
 	}
+#ifdef __linux__
 	return dropcaps();
+#else
+	return true;
+#endif
 }
 
 void daemonize()

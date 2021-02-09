@@ -65,7 +65,7 @@ void modify_tcp_segment(char *segment,size_t segment_buffer_size,size_t *size,si
 			if (params.unixeol)
 			{
 				p = pp = segment;
-				while (p = memmem(p, segment + *size - p, "\r\n", 2))
+				while ((p = memmem(p, segment + *size - p, "\r\n", 2)))
 				{
 					*p = '\n'; p++;
 					memmove(p, p + 1, segment + *size - p - 1);

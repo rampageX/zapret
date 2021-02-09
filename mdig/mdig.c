@@ -16,6 +16,7 @@
 #include <getopt.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <netdb.h>
 
 #define RESOLVER_EAGAIN_ATTEMPTS 2
@@ -34,8 +35,14 @@ static const char* eai_str(int r)
 		return "EAI_NONAME";
 	case EAI_AGAIN:
 		return "EAI_AGAIN";
+#ifdef EAI_ADDRFAMILY
 	case EAI_ADDRFAMILY:
 		return "EAI_ADDRFAMILY";
+#endif
+#ifdef EAI_NODATA
+	case EAI_NODATA:
+		return "EAI_NODATA";
+#endif
 	case EAI_BADFLAGS:
 		return "EAI_BADFLAGS";
 	case EAI_FAIL:
@@ -44,8 +51,6 @@ static const char* eai_str(int r)
 		return "EAI_MEMORY";
 	case EAI_FAMILY:
 		return "EAI_FAMILY";
-	case EAI_NODATA:
-		return "EAI_NODATA";
 	case EAI_SERVICE:
 		return "EAI_SERVICE";
 	case EAI_SOCKTYPE:
@@ -204,7 +209,7 @@ static void *t_resolver(void *arg)
 				VLOG("resolving %s", dom);
 				for (i = 0; i < RESOLVER_EAGAIN_ATTEMPTS; i++)
 				{
-					if (r = getaddrinfo(dom, NULL, &hints, &result))
+					if ((r = getaddrinfo(dom, NULL, &hints, &result)))
 					{
 						VLOG("failed to resolve %s : result %d (%s)", dom, r, eai_str(r));
 						if (r == EAI_AGAIN) continue; // temporary failure. should retry

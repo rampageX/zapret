@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
+#include <netinet/in.h>
 #include <netinet/ip6.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>

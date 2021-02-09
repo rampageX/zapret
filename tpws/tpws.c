@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <net/if.h>
 #include <ifaddrs.h>
@@ -92,7 +93,7 @@ static bool is_interface_online(const char *ifname)
 		return false;
 	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
-	ifr.ifr_name[IFNAMSIZ] = 0;
+	ifr.ifr_name[IFNAMSIZ-1] = 0;
 	ioctl(sock, SIOCGIFFLAGS, &ifr);
 	close(sock);
 	return !!(ifr.ifr_flags & IFF_UP);
@@ -656,7 +657,7 @@ int main(int argc, char *argv[])
 					if (found) break;
 
 					if (params.binds[i].bindll && !params.binds[i].bindll_force && sec>=params.binds[i].bind_wait_ip_ll)
-						if (found = find_listen_addr(&list[i].salisten,params.binds[i].bindiface,params.binds[i].bind_if6,false,&if_index)) break;
+						if ((found = find_listen_addr(&list[i].salisten,params.binds[i].bindiface,params.binds[i].bind_if6,false,&if_index))) break;
 
 					if (sec>=params.binds[i].bind_wait_ip)
 						break;

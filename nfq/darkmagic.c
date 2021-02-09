@@ -122,7 +122,7 @@ static int rawsend_socket(int family,uint32_t fwmark)
 	
 	if (*sock==-1)
 	{
-		int yes=1,pri=6;
+		int pri=6;
 		*sock = socket(family, SOCK_RAW, IPPROTO_RAW);
 		if (*sock==-1)
 			perror("rawsend: socket()");

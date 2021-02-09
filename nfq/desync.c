@@ -115,7 +115,7 @@ packet_process_result dpi_desync_packet(uint8_t *data_pkt, size_t len_pkt, struc
 		bool bIsHttp;
 		uint8_t *p, *phost;
 
-		if (bIsHttp = IsHttp(data_payload,len_payload))
+		if ((bIsHttp = IsHttp(data_payload,len_payload)))
 		{
 			DLOG("packet contains HTTP request\n")
 			fake = params.fake_http;
