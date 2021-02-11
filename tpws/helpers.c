@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 
 char *strncasestr(const char *s,const char *find, size_t slen)
 {
@@ -47,6 +48,50 @@ void print_sockaddr(const struct sockaddr *sa)
 }
 
 
+// -1 = error,  0 = not local, 1 = local
+bool check_local_ip(const struct sockaddr *saddr)
+{
+	struct ifaddrs *addrs,*a;
+    
+	if (getifaddrs(&addrs)<0) return false;
+	a  = addrs;
+
+	bool bres=false;
+	while (a)
+	{
+		if (a->ifa_addr && sacmp(a->ifa_addr,saddr))
+		{
+			bres=true;
+			break;
+		}
+		a = a->ifa_next;
+	}
+
+	freeifaddrs(addrs);
+	return bres;
+}
+void print_addrinfo(const struct addrinfo *ai)
+{
+	char str[64];
+	while (ai)
+	{
+		switch (ai->ai_family)
+		{
+		case AF_INET:
+			if (inet_ntop(ai->ai_family, &((struct sockaddr_in*)ai->ai_addr)->sin_addr, str, sizeof(str)))
+				printf("%s\n", str);
+			break;
+		case AF_INET6:
+			if (inet_ntop(ai->ai_family, &((struct sockaddr_in6*)ai->ai_addr)->sin6_addr, str, sizeof(str)))
+				printf( "%s\n", str);
+			break;
+		}
+		ai = ai->ai_next;
+	}
+}
+
+
+
 bool saismapped(const struct sockaddr_in6 *sa)
 {
 	// ::ffff:1.2.3.4
@@ -80,4 +125,12 @@ bool saconvmapped(struct sockaddr_storage *a)
 		return true;
 	}
 	return false;
+}
+
+
+
+int set_keepalive(int fd)
+{
+	int yes=1;
+	return setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(int))!=-1;
 }

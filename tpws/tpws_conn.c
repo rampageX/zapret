@@ -14,7 +14,6 @@
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-#include <ifaddrs.h>
 #include <netdb.h>
 
 #include "tpws.h"
@@ -261,60 +260,6 @@ static ssize_t send_or_buffer(send_buffer_t *sb, int fd, char *buf, size_t len)
 	}
 	return wr;
 }
-
-static bool set_linger(int fd)
-{
-	struct linger ling={1,5};
-	return setsockopt(fd,SOL_SOCKET,SO_LINGER,&ling,sizeof(ling))!=-1;
-}
-static int set_keepalive(int fd)
-{
-	int yes=1;
-	return setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(int))!=-1;
-}
-
-// -1 = error,  0 = not local, 1 = local
-static bool check_local_ip(const struct sockaddr *saddr)
-{
-	struct ifaddrs *addrs,*a;
-    
-	if (getifaddrs(&addrs)<0) return false;
-	a  = addrs;
-
-	bool bres=false;
-	while (a)
-	{
-		if (a->ifa_addr && sacmp(a->ifa_addr,saddr))
-		{
-			bres=true;
-			break;
-		}
-		a = a->ifa_next;
-	}
-
-	freeifaddrs(addrs);
-	return bres;
-}
-static void print_addrinfo(const struct addrinfo *ai)
-{
-	char str[64];
-	while (ai)
-	{
-		switch (ai->ai_family)
-		{
-		case AF_INET:
-			if (inet_ntop(ai->ai_family, &((struct sockaddr_in*)ai->ai_addr)->sin_addr, str, sizeof(str)))
-				printf("%s\n", str);
-			break;
-		case AF_INET6:
-			if (inet_ntop(ai->ai_family, &((struct sockaddr_in6*)ai->ai_addr)->sin6_addr, str, sizeof(str)))
-				printf( "%s\n", str);
-			break;
-		}
-		ai = ai->ai_next;
-	}
-}
-
 
 static void dbgprint_socket_buffers(int fd)
 {
