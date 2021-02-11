@@ -431,7 +431,7 @@ static bool epoll_set_flow(tproxy_conn_t *conn, bool bFlowIn, bool bFlowOut)
 
 //Acquires information, initiates a connect and initialises a new connection
 //object. Return NULL if anything fails, pointer to object otherwise
-static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,int local_fd, struct sockaddr *accept_sa, uint16_t listen_port, conn_type_t proxy_type)
+static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,int local_fd, const struct sockaddr *accept_sa, uint16_t listen_port, conn_type_t proxy_type)
 {
 	struct sockaddr_storage orig_dst;
 	tproxy_conn_t *conn;
@@ -445,7 +445,6 @@ static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,int
 			close(local_fd);
 			return NULL;
 		}
-
 		if (check_local_ip((struct sockaddr*)&orig_dst) && saport((struct sockaddr*)&orig_dst)==listen_port)
 		{
 			VPRINT("Dropping connection to local address to the same port to avoid loop")
@@ -1180,7 +1179,7 @@ int event_loop(int *listen_fd, size_t listen_fd_ct)
 				else if (!(conn=add_tcp_connection(efd, &conn_list, tmp_fd, (struct sockaddr*)&accept_sa, params.port, params.proxy_type)))
 				{
 					// add_tcp_connection closes fd in case of failure
-					fprintf(stderr, "Failed to add connection\n");
+					VPRINT("Failed to add connection");
 				}
 				else
 				{

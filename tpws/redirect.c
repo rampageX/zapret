@@ -57,7 +57,7 @@ bool redir_init()
 	return redir_open_private("/dev/pf", O_RDONLY);
 }
 
-static bool destination_from_pf(struct sockaddr *accept_sa, struct sockaddr_storage *orig_dst)
+static bool destination_from_pf(const struct sockaddr *accept_sa, struct sockaddr_storage *orig_dst)
 {
 	struct pfioc_natlook nl;
 
@@ -86,9 +86,9 @@ static bool destination_from_pf(struct sockaddr *accept_sa, struct sockaddr_stor
 		{
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)orig_dst;
 		nl.af = AF_INET6;
-		memcpy(&nl.saddr.v6, &((struct sockaddr_in6*)accept_sa)->sin6_addr, sizeof(struct in6_addr));
+		nl.saddr.v6 = ((struct sockaddr_in6*)accept_sa)->sin6_addr;
 		nl.sport = ((struct sockaddr_in6*)accept_sa)->sin6_port;
-		memcpy(&nl.daddr.v6, &sin6->sin6_addr, sizeof(struct in6_addr));
+		nl.daddr.v6 = sin6->sin6_addr;
 		nl.dport = sin6->sin6_port;
 		}
 		break;
@@ -135,10 +135,8 @@ void redir_close() {};
 
 
 
-
-//Store the original destination address in remote_addr
-//Return 0 on success, <0 on failure
-bool get_dest_addr(int sockfd, struct sockaddr *accept_sa, struct sockaddr_storage *orig_dst)
+//Store the original destination address in orig_dst
+bool get_dest_addr(int sockfd, const struct sockaddr *accept_sa, struct sockaddr_storage *orig_dst)
 {
 	char orig_dst_str[INET6_ADDRSTRLEN];
 	socklen_t addrlen = sizeof(*orig_dst);
