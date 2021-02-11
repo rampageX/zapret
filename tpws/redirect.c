@@ -26,9 +26,11 @@
 #endif
 
 
-static int redirector_fd=-1;
 
 #if defined(USE_PF)
+
+static int redirector_fd=-1;
+
 void redir_close()
 {
 	if (redirector_fd!=-1)
