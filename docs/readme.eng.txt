@@ -7,6 +7,8 @@ The project is mainly aimed at the Russian audience to fight russian regulator n
 Some features of the project are russian reality specific (such as getting list of sites
 blocked by Roskomnadzor), but most others are common.
 
+FreeBSD and OpenBSD system have limited support.
+
 How it works
 ------------
 
