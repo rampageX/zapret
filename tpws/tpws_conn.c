@@ -445,7 +445,7 @@ static bool get_dest_addr(int sockfd, struct sockaddr_storage *orig_dst)
 		r = getsockopt(sockfd, SOL_IPV6, IP6T_SO_ORIGINAL_DST, (struct sockaddr*) orig_dst, &addrlen);
 	if (r<0)
 	{
-		fprintf(stderr,"both SO_ORIGINAL_DST and IP6T_SO_ORIGINAL_DST failed !\n");
+		DBGPRINT("both SO_ORIGINAL_DST and IP6T_SO_ORIGINAL_DST failed !");
 		// TPROXY : socket is bound to original destination
 		r=getsockname(sockfd, (struct sockaddr*) orig_dst, &addrlen);
 		if (r<0)
