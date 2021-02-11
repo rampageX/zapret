@@ -117,6 +117,7 @@ static bool destination_from_pf(struct sockaddr *accept_sa, struct sockaddr_stor
 		break;
 	default:
 		DBGPRINT("destination_from_pf : DIOCNATLOOK returned unexpected address family %d",nl.af);
+		return false;
 	}
 
 	return true;
