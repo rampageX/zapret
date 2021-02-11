@@ -1174,11 +1174,31 @@ connbytes придется опускать, поскольку модуля в 
 FreeBSD, OpenBSD
 ----------------
 
-mdig, ip2net, tpws собираются на FreeBSD и OpenBSD
-tpws не поддерживает прозрачный режим. поддерживается только socks.
+mdig, ip2net, tpws работают на FreeBSD и OpenBSD
 nfqws недоступен.
 для сборки tpws использовать 'make bsd' вместо 'make'
 в openbsd бинд по умолчанию только на ipv6. для бинда на ipv4 указать "--bind-addr=0.0.0.0"
+
+Краткая инструкция по запуску tpws в прозрачном режиме.
+Предполагается, что интерфейс LAN называется em1.
+FreeBSD IPFW  :
+ipfw add 100 fwd 127.0.0.1,1188 tcp from me to any 80,443 proto ip4 not uid daemon
+ipfw add 100 fwd ::1,1188 tcp from me to any 80,443 proto ip6 not uid daemon
+ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
+tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+Удалить правила : ipfw delete 100
+
+OpenBSD PF :
+/etc/pf.conf
+pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 1188 
+pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 1188 
+pfctl -f /etc/pf.conf
+tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+В PF непонятно как делать rdr-to с той же системы, где работает proxy.
+Попытки завести divert-to так же не увенчались успехом.
+
 
 Windows (WSL)
 -------------

@@ -34,6 +34,7 @@
 #include "hostlist.h"
 #include "params.h"
 #include "sec.h"
+#include "redirect.h"
 
 struct params_s params;
 
@@ -776,15 +777,22 @@ int main(int argc, char *argv[])
 		//This allows the socket to accept connections for non-local IPs
 		if (params.proxy_type==CONN_TYPE_TRANSPARENT)
 		{
+			if (!redir_init())
+			{
+				fprintf(stderr,"could not initialize redirector\n");
+			}
 		#ifdef __linux__
 			if (setsockopt(listen_fd[i], SOL_IP, IP_TRANSPARENT, &yes, sizeof(yes)) == -1)
 			{
 				perror("setsockopt (IP_TRANSPARENT): ");
 				goto exiterr;
 			}
-		#else
-			fprintf(stderr, "transparent sockets supported only in linux\n");
-			goto exiterr;
+		#elif defined(BSD) && defined(SO_BINDANY)
+			if (setsockopt(listen_fd[i], SOL_SOCKET, SO_BINDANY, &yes, sizeof(yes)) == -1)
+			{
+				perror("setsockopt (SO_BINDANY): ");
+				goto exiterr;
+			}
 		#endif
 		}
 
@@ -836,14 +844,11 @@ int main(int argc, char *argv[])
 	signal(SIGHUP, onhup); 
 
 	retval = event_loop(listen_fd,params.binds_last+1);
-	
-	for(i=0;i<=params.binds_last;i++) if (listen_fd[i]!=-1) close(listen_fd[i]);
-	cleanup_params();
-
 	exit_v = retval < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 	printf("Exiting\n");
 	
 exiterr:
+	redir_close();
 	for(i=0;i<=params.binds_last;i++) if (listen_fd[i]!=-1) close(listen_fd[i]);
 	cleanup_params();
 	return exit_v;

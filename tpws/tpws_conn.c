@@ -14,22 +14,16 @@
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-#ifdef __linux__
- #include <linux/netfilter_ipv4.h>
-#endif
 #include <ifaddrs.h>
 #include <netdb.h>
 
 #include "tpws.h"
 #include "tpws_conn.h"
+#include "redirect.h"
 #include "tamper.h"
 #include "params.h"
 #include "socks.h"
 #include "helpers.h"
-
-#ifndef IP6T_SO_ORIGINAL_DST
- #define IP6T_SO_ORIGINAL_DST 80
-#endif
 
 // keep separate legs counter. counting every time thousands of legs can consume cpu
 static int legs_local, legs_remote;
@@ -279,27 +273,6 @@ static int set_keepalive(int fd)
 	return setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(int))!=-1;
 }
 
-static bool ismapped(const struct sockaddr_in6 *sa)
-{
-	// ::ffff:1.2.3.4
-	return !memcmp(sa->sin6_addr.s6_addr,"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff",12);
-}
-static bool mappedcmp(const struct sockaddr_in *sa1,const struct sockaddr_in6 *sa2)
-{
-	return ismapped(sa2) && !memcmp(sa2->sin6_addr.s6_addr+12,&sa1->sin_addr.s_addr,4);
-}
-static bool sacmp(const struct sockaddr *sa1,const struct sockaddr *sa2)
-{
-	return sa1->sa_family==AF_INET && sa2->sa_family==AF_INET && !memcmp(&((struct sockaddr_in*)sa1)->sin_addr,&((struct sockaddr_in*)sa2)->sin_addr,sizeof(struct in_addr)) ||
-		sa1->sa_family==AF_INET6 && sa2->sa_family==AF_INET6 && !memcmp(&((struct sockaddr_in6*)sa1)->sin6_addr,&((struct sockaddr_in6*)sa2)->sin6_addr,sizeof(struct in6_addr)) ||
-		sa1->sa_family==AF_INET && sa2->sa_family==AF_INET6 && mappedcmp((struct sockaddr_in*)sa1,(struct sockaddr_in6*)sa2) ||
-		sa1->sa_family==AF_INET6 && sa2->sa_family==AF_INET && mappedcmp((struct sockaddr_in*)sa2,(struct sockaddr_in6*)sa1);
-}
-static uint16_t saport(const struct sockaddr *sa)
-{
-	return htons(sa->sa_family==AF_INET ? ((struct sockaddr_in*)sa)->sin_port :
-		     sa->sa_family==AF_INET6 ? ((struct sockaddr_in6*)sa)->sin6_port : 0);
-}
 // -1 = error,  0 = not local, 1 = local
 static bool check_local_ip(const struct sockaddr *saddr)
 {
@@ -424,49 +397,6 @@ static int connect_remote(const struct sockaddr *remote_addr)
 	return remote_fd;
 }
 
-#ifdef __linux__
-//Store the original destination address in remote_addr
-//Return 0 on success, <0 on failure
-static bool get_dest_addr(int sockfd, struct sockaddr_storage *orig_dst)
-{
-	char orig_dst_str[INET6_ADDRSTRLEN];
-	socklen_t addrlen = sizeof(*orig_dst);
-	int r;
-
-	memset(orig_dst, 0, addrlen);
-
-	//For UDP transparent proxying:
-	//Set IP_RECVORIGDSTADDR socket option for getting the original 
-	//destination of a datagram
-
-	// DNAT
-	r=getsockopt(sockfd, SOL_IP, SO_ORIGINAL_DST, (struct sockaddr*) orig_dst, &addrlen);
-	if (r<0)
-		r = getsockopt(sockfd, SOL_IPV6, IP6T_SO_ORIGINAL_DST, (struct sockaddr*) orig_dst, &addrlen);
-	if (r<0)
-	{
-		DBGPRINT("both SO_ORIGINAL_DST and IP6T_SO_ORIGINAL_DST failed !");
-		// TPROXY : socket is bound to original destination
-		r=getsockname(sockfd, (struct sockaddr*) orig_dst, &addrlen);
-		if (r<0)
-		{
-			perror("getsockname: ");
-			return false;
-		}
-	}
-	if (orig_dst->ss_family == AF_INET)
-	{
-		inet_ntop(AF_INET, &(((struct sockaddr_in*) orig_dst)->sin_addr), orig_dst_str, INET_ADDRSTRLEN);
-		VPRINT("Original destination for socket fd=%d : %s:%d", sockfd,orig_dst_str, htons(((struct sockaddr_in*) orig_dst)->sin_port))
-	}
-	else if (orig_dst->ss_family == AF_INET6)
-	{
-		inet_ntop(AF_INET6,&(((struct sockaddr_in6*) orig_dst)->sin6_addr), orig_dst_str, INET6_ADDRSTRLEN);
-		VPRINT("Original destination for socket fd=%d : [%s]:%d", sockfd,orig_dst_str, htons(((struct sockaddr_in6*) orig_dst)->sin6_port))
-	}
-	return true;
-}
-#endif
 
 //Free resources occupied by this connection
 static void free_conn(tproxy_conn_t *conn)
@@ -565,8 +495,7 @@ static bool epoll_set_flow(tproxy_conn_t *conn, bool bFlowIn, bool bFlowOut)
 
 //Acquires information, initiates a connect and initialises a new connection
 //object. Return NULL if anything fails, pointer to object otherwise
-static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,
-        int local_fd, uint16_t listen_port, conn_type_t proxy_type)
+static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,int local_fd, struct sockaddr *accept_sa, uint16_t listen_port, conn_type_t proxy_type)
 {
 	struct sockaddr_storage orig_dst;
 	tproxy_conn_t *conn;
@@ -574,8 +503,7 @@ static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,
 
 	if (proxy_type==CONN_TYPE_TRANSPARENT)
 	{
-#ifdef __linux__
-		if(!get_dest_addr(local_fd, &orig_dst))
+		if(!get_dest_addr(local_fd, accept_sa, &orig_dst))
 		{
 			fprintf(stderr, "Could not get destination address\n");
 			close(local_fd);
@@ -588,9 +516,6 @@ static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,
 			close(local_fd);
 			return NULL;
 		}
-#else
-		return NULL;
-#endif
 	}
 
 	// socket buffers inherited from listen_fd
@@ -1245,6 +1170,8 @@ int event_loop(int *listen_fd, size_t listen_fd_ct)
 	time_t tm,last_timeout_check=0;
 	tproxy_conn_t *listen_conn = NULL;
 	size_t sct;
+	struct sockaddr_storage accept_sa;
+	socklen_t accept_salen;
 
 	if (!listen_fd_ct) return -1;
 
@@ -1302,8 +1229,9 @@ int event_loop(int *listen_fd, size_t listen_fd_ct)
 			{
 				DBGPRINT("\nEVENT mask %08X fd=%d accept",events[i].events,conn->fd)
 
+				accept_salen = sizeof(accept_sa);
 				//Accept new connection
-				tmp_fd = accept4(conn->fd, NULL, 0, SOCK_NONBLOCK);
+				tmp_fd = accept4(conn->fd, (struct sockaddr*)&accept_sa, &accept_salen, SOCK_NONBLOCK);
 				if (tmp_fd < 0)
 				{
 					fprintf(stderr, "Failed to accept connection\n");
@@ -1313,7 +1241,7 @@ int event_loop(int *listen_fd, size_t listen_fd_ct)
 					close(tmp_fd);
 					VPRINT("Too many local legs : %d", legs_local)
 				}
-				else if (!(conn=add_tcp_connection(efd, &conn_list, tmp_fd, params.port, params.proxy_type)))
+				else if (!(conn=add_tcp_connection(efd, &conn_list, tmp_fd, (struct sockaddr*)&accept_sa, params.port, params.proxy_type)))
 				{
 					// add_tcp_connection closes fd in case of failure
 					fprintf(stderr, "Failed to add connection\n");

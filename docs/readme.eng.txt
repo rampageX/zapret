@@ -532,11 +532,31 @@ Now its possible to run /data/local/tmp/zapret/tpws from any app such as tasker.
 FreeBSD, OpenBSD
 ----------------
 
-mdig, ip2net, tpws can be compiled in FreeBSD and OpenBSD
-tpws does not support transparent mode. only socks mode is supported.
+mdig, ip2net, tpws work in FreeBSD and OpenBSD
 nfqws is not compatible
 to compile tpws use : 'make bsd'. not just 'make'
 in openbsd default bind is ipv6 only. to bind to ipv4 specify --bind-addr=0.0.0.0
+
+Brief howto for tpws transparent mode.
+LAN interface is named 'em1'.
+FreeBSD IPFW  :
+ipfw add 100 fwd 127.0.0.1,1188 tcp from me to any 80,443 proto ip4 not uid daemon
+ipfw add 100 fwd ::1,1188 tcp from me to any 80,443 proto ip6 not uid daemon
+ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
+tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+Delete rules : ipfw delete 100
+
+OpenBSD PF :
+/etc/pf.conf
+pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 1188 
+pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 1188 
+pfctl -f /etc/pf.conf
+tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+Its not clear how to to rdr-to from the same system the proxy runs on.
+Also could not figure out how to use divert-to. It doesnt seem to work.
+
 
 Windows (WSL)
 -------------
