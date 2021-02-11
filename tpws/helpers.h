@@ -20,4 +20,4 @@ uint16_t saport(const struct sockaddr *sa);
 bool saconvmapped(struct sockaddr_storage *a);
 
 int set_keepalive(int fd);
-
+int get_so_error(int fd);

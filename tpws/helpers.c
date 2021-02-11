@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -133,4 +134,13 @@ int set_keepalive(int fd)
 {
 	int yes=1;
 	return setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(int))!=-1;
+}
+int get_so_error(int fd)
+{
+	// getsockopt(SO_ERROR) clears error
+	int errn;
+	socklen_t optlen = sizeof(errn);
+	if(getsockopt(fd, SOL_SOCKET, SO_ERROR, &errn, &optlen) == -1)
+		errn=errno;
+	return errn;
 }

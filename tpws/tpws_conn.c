@@ -90,15 +90,6 @@ static bool socks_send_rep_errno(uint8_t ver, int fd, int errn)
 {
 	return ver==5 ? socks5_send_rep_errno(fd,errn) : socks4_send_rep_errno(fd, errn);
 }
-static int get_so_error(int fd)
-{
-	// getsockopt(SO_ERROR) clears error
-	int errn;
-	socklen_t optlen = sizeof(errn);
-	if(getsockopt(fd, SOL_SOCKET, SO_ERROR, &errn, &optlen) == -1)
-		errn=errno;
-	return errn;
-}
 static bool proxy_remote_conn_ack(tproxy_conn_t *conn, int sock_err)
 {
 	// if proxy mode acknowledge connection request
