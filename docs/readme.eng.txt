@@ -542,6 +542,7 @@ mdig, ip2net, tpws work in FreeBSD and OpenBSD
 nfqws is not compatible
 
 compile from source : make -C /opt/zapret
+enable PF support (not required and not desired if using ipfw) : make -C /opt/zapret/tpws CFLAGS=-DUSE_PF
 
 tpws transparent mode quick start.
 LAN='em1', WAN="em0".
@@ -566,6 +567,10 @@ ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
 
 Tables zapret, nozapret, ipban are created by ipset/*.sh scripts the same way as in Linux.
 
+In FreeBSD tpws does not require special permissions for transparent mode.
+However without root its not possible to bind to ports <1024 and change UID/GID. Without changing UID tpws
+will run into recursive loop, and that's why its necessary to write ipfw rules with the right UID.
+
 OpenBSD
 -------
 
@@ -583,6 +588,7 @@ tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 Its not clear how to to rdr-to from the same system the proxy runs on.
 Also could not figure out how to use divert-to. It doesnt seem to work.
+rdr-to support is done using /dev/pf, that's why transparent mode requires root.
 
 
 Windows (WSL)
