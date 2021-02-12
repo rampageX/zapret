@@ -1192,7 +1192,7 @@ ipfw add 100 fwd 127.0.0.1,1188 tcp from me to any 80,443 proto ip4 not uid daem
 ipfw add 100 fwd ::1,1188 tcp from me to any 80,443 proto ip6 not uid daemon
 ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
 ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
-tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+/opt/zapret/tpws/tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 Для трафика только на таблицу zapret, за исключением таблицы nozapret :
 ipfw delete 100
@@ -1202,7 +1202,7 @@ ipfw add 100 fwd ::1,1188 tcp from me to table\(zapret\) 80,443 proto ip6 not ui
 ipfw add 100 allow tcp from any to table\(nozapret\) 80,443 recv em1
 ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
 ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
-tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+/opt/zapret/tpws/tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 Таблицы zapret, nozapret, ipban создаются скриптами из ipset по аналогии с Linux.
 
