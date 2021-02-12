@@ -28,7 +28,7 @@ curl -k --fail --max-time 600 --connect-timeout 5 --retry 3 --max-filesize 25165
  echo reestr list download failed
  exit 2
 }
-dlsize=$(wc -c "$ZREESTR" | cut -f 1 -d ' ')
+dlsize=$(wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
 if test $dlsize -lt 1048576; then
  echo reestr ip list is too small. can be bad.
  exit 2

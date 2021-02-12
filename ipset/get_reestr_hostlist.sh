@@ -18,7 +18,7 @@ curl -k --fail --max-time 600 --connect-timeout 5 --retry 3 --max-filesize 25165
  echo reestr list download failed   
  exit 2
 }
-dlsize=$(wc -c "$ZREESTR" | cut -f 1 -d ' ')
+dlsize=$(wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
 if test $dlsize -lt 204800; then
  echo list file is too small. can be bad.
  exit 2

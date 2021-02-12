@@ -75,8 +75,10 @@ cut_local6()
 
 oom_adjust_high()
 {
-	echo setting high oom kill priority
-	echo -n 100 >/proc/$$/oom_score_adj
+	[ -f /proc/$$/oom_score_adj ] && {
+		echo setting high oom kill priority
+		echo -n 100 >/proc/$$/oom_score_adj
+	}
 }
 
 getexclude()
@@ -100,4 +102,13 @@ getuser()
   [ "$DISABLE_IPV4" != "1" ] && digger "$ZUSERLIST_IPBAN" 4 | cut_local | sort -u > "$ZIPLIST_USER_IPBAN"
   [ "$DISABLE_IPV6" != "1" ] && digger "$ZUSERLIST_IPBAN" 6 | cut_local6 | sort -u > "$ZIPLIST_USER_IPBAN6"
  }
+}
+
+ipset_present()
+{
+ which ipset 2>/dev/null >/dev/null
+}
+ipfw_present()
+{
+ which ipfw 2>/dev/null >/dev/null
 }
