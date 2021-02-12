@@ -549,27 +549,30 @@ LAN='em1', WAN="em0".
 
 For all traffic:
 ipfw delete 100
-ipfw add 100 fwd 127.0.0.1,1188 tcp from me to any 80,443 proto ip4 xmit em0 not uid daemon
-ipfw add 100 fwd ::1,1188 tcp from me to any 80,443 proto ip6 xmit em0 not uid daemon
-ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
-ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
-/opt/zapret/tpws/tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+ipfw add 100 fwd 127.0.0.1,988 tcp from me to any 80,443 proto ip4 xmit em0 not uid daemon
+ipfw add 100 fwd ::1,988 tcp from me to any 80,443 proto ip6 xmit em0 not uid daemon
+ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
+/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 Process only table zapret with the exception of table nozapret :
 ipfw delete 100
 ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
-ipfw add 100 fwd 127.0.0.1,1188 tcp from me to table\(zapret\) 80,443 proto ip4 xmit em0 not uid daemon
-ipfw add 100 fwd ::1,1188 tcp from me to table\(zapret\) 80,443 proto ip6 xmit em0 not uid daemon
+ipfw add 100 fwd 127.0.0.1,988 tcp from me to table\(zapret\) 80,443 proto ip4 xmit em0 not uid daemon
+ipfw add 100 fwd ::1,988 tcp from me to table\(zapret\) 80,443 proto ip6 xmit em0 not uid daemon
 ipfw add 100 allow tcp from any to table\(nozapret\) 80,443 recv em1
-ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
-ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
-/opt/zapret/tpws/tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
+/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 Tables zapret, nozapret, ipban are created by ipset/*.sh scripts the same way as in Linux.
 
 When using ipfw tpws does not require special permissions for transparent mode.
 However without root its not possible to bind to ports <1024 and change UID/GID. Without changing UID tpws
 will run into recursive loop, and that's why its necessary to write ipfw rules with the right UID.
+Binding tpws to ports >=1024 is dangerous. If tpws is not running any unprivileged process can
+listen to that port and intercept traffic.
+
 
 OpenBSD
 -------
@@ -581,10 +584,10 @@ in openbsd default bind is ipv6 only. to bind to ipv4 specify --bind-addr=0.0.0.
 
 OpenBSD PF :
 /etc/pf.conf
-pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 1188 
-pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 1188 
+pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 988 
+pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 988 
 pfctl -f /etc/pf.conf
-tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 Its not clear how to to rdr-to from the same system the proxy runs on.
 Also could not figure out how to use divert-to. It doesnt seem to work.

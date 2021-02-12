@@ -1190,27 +1190,29 @@ nfqws недоступен.
 
 Для всего трафика :
 ipfw delete 100
-ipfw add 100 fwd 127.0.0.1,1188 tcp from me to any 80,443 proto ip4 xmit em0 not uid daemon
-ipfw add 100 fwd ::1,1188 tcp from me to any 80,443 proto ip6 xmit em0 not uid daemon
-ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
-ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
-/opt/zapret/tpws/tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+ipfw add 100 fwd 127.0.0.1,988 tcp from me to any 80,443 proto ip4 xmit em0 not uid daemon
+ipfw add 100 fwd ::1,988 tcp from me to any 80,443 proto ip6 xmit em0 not uid daemon
+ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
+/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 Для трафика только на таблицу zapret, за исключением таблицы nozapret :
 ipfw delete 100
 ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
-ipfw add 100 fwd 127.0.0.1,1188 tcp from me to table\(zapret\) 80,443 proto ip4 xmit em0 not uid daemon
-ipfw add 100 fwd ::1,1188 tcp from me to table\(zapret\) 80,443 proto ip6 xmit em0 not uid daemon
+ipfw add 100 fwd 127.0.0.1,988 tcp from me to table\(zapret\) 80,443 proto ip4 xmit em0 not uid daemon
+ipfw add 100 fwd ::1,988 tcp from me to table\(zapret\) 80,443 proto ip6 xmit em0 not uid daemon
 ipfw add 100 allow tcp from any to table\(nozapret\) 80,443 recv em1
-ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
-ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
-/opt/zapret/tpws/tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
+/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 Таблицы zapret, nozapret, ipban создаются скриптами из ipset по аналогии с Linux.
 
 При использовании ipfw tpws не требует повышенных привилегий для реализации прозрачного режима.
 Однако, без рута невозможен бинд на порты <1024 и смена UID/GID. Без смены UID будет рекурсия,
 поэтому правила ipfw нужно создавать с учетом UID, под которым работает tpws.
+Бинд на порты >=1024 может создать угрозу перехвата трафика непривилегированным
+процессом, если вдруг tpws не запущен.
 
 OpenBSD
 -------
@@ -1222,10 +1224,10 @@ nfqws недоступен.
 
 OpenBSD PF :
 /etc/pf.conf
-pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 1188 
-pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 1188 
+pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 988 
+pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 988 
 pfctl -f /etc/pf.conf
-tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 В PF непонятно как делать rdr-to с той же системы, где работает proxy.
 Попытки завести divert-to так же не увенчались успехом.
