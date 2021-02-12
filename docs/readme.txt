@@ -1177,8 +1177,8 @@ FreeBSD, OpenBSD
 
 mdig, ip2net, tpws работают на FreeBSD и OpenBSD
 nfqws недоступен.
-для сборки tpws использовать 'make bsd' вместо 'make'
-в openbsd бинд по умолчанию только на ipv6. для бинда на ipv4 указать "--bind-addr=0.0.0.0"
+В OpenBSD для сборки tpws использовать 'make bsd' вместо 'make'
+в OpenBSD бинд по умолчанию только на ipv6. для бинда на ipv4 указать "--bind-addr=0.0.0.0"
 
 Краткая инструкция по запуску tpws в прозрачном режиме.
 Предполагается, что интерфейс LAN называется em1.

@@ -536,7 +536,7 @@ FreeBSD, OpenBSD
 
 mdig, ip2net, tpws work in FreeBSD and OpenBSD
 nfqws is not compatible
-to compile tpws use : 'make bsd'. not just 'make'
+to compile tpws in OpenBSD use : 'make bsd'. not just 'make'
 in openbsd default bind is ipv6 only. to bind to ipv4 specify --bind-addr=0.0.0.0
 
 Brief howto for tpws transparent mode.
