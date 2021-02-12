@@ -28,7 +28,6 @@
 
 
 #if defined(USE_PF)
-
 static int redirector_fd=-1;
 
 void redir_close()
@@ -60,6 +59,8 @@ bool redir_init()
 static bool destination_from_pf(const struct sockaddr *accept_sa, struct sockaddr_storage *orig_dst)
 {
 	struct pfioc_natlook nl;
+
+	if (redirector_fd==-1) return false;
 
 	if (accept_sa->sa_family!=orig_dst->ss_family)
 	{
