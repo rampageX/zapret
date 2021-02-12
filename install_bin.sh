@@ -31,7 +31,12 @@ ccp()
 	#cp -f "$BINDIR/$1" "$EXEDIR/$2" && echo copying : "$BINDIR/$1" =\> "$EXEDIR/$2"
 }
 
-ARCHLIST="my x86_64 x86 aarch64 arm mips64r2-msb mips32r1-lsb mips32r1-msb ppc"
+UNAME=$(uname)
+if [ "$UNAME" = "Linux" ]; then
+ ARCHLIST="my x86_64 x86 aarch64 arm mips64r2-msb mips32r1-lsb mips32r1-msb ppc"
+else
+ ARCHLIST="my"
+fi
 
 if [ "$1" = "getarch" ]; then
 	for arch in $ARCHLIST
@@ -58,6 +63,7 @@ else
 			echo $arch is NOT OK
 		fi
 	done
+	echo no compatible binaries found
 fi
 
 exit 1
