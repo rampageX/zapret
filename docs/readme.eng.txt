@@ -52,15 +52,15 @@ You need to run them with the necessary parameters and redirect certain traffic 
 To redirect a TCP connection to a transparent proxy, the following commands are used:
 
 forwarded fraffic :
-iptables -t nat -I PREROUTING -i <internal_interface> -p tcp --dport 80 -j DNAT --to 127.0.0.127:1188
+iptables -t nat -I PREROUTING -i <internal_interface> -p tcp --dport 80 -j DNAT --to 127.0.0.127:988
 outgoing traffic :
-iptables -t nat -I OUTPUT -o <external_interface> -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to 127.0.0.127:1188
+iptables -t nat -I OUTPUT -o <external_interface> -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to 127.0.0.127:988
 
 DNAT on localhost works in the OUTPUT chain, but does not work in the PREROUTING chain without enabling the route_localnet parameter:
 
 sysctl -w net.ipv4.conf.<internal_interface>.route_localnet=1
 
-You can use "-j REDIRECT --to-port 1188" instead of DNAT, but in this case the transparent proxy process
+You can use "-j REDIRECT --to-port 988" instead of DNAT, but in this case the transparent proxy process
 should listen on the ip address of the incoming interface or on all addresses. Listen all - not good
 in terms of security. Listening one (local) is possible, but automated scripts will have to recognize it,
 then dynamically enter it into the command. In any case, additional efforts are required.
@@ -100,7 +100,7 @@ ip6tables
 ip6tables work almost exactly the same way as ipv4, but there are a number of important nuances.
 In DNAT, you should take the address --to in square brackets. For example :
 
- ip6tables -t nat -I OUTPUT -o <external_interface> -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to [::1]:1188
+ ip6tables -t nat -I OUTPUT -o <external_interface> -p tcp --dport 80 -m owner ! --uid-owner tpws -j DNAT --to [::1]:988
 
 The route_localnet parameter does not exist for ipv6.
 DNAT to localhost (:: 1) is possible only in the OUTPUT chain.
@@ -572,7 +572,6 @@ However without root its not possible to bind to ports <1024 and change UID/GID.
 will run into recursive loop, and that's why its necessary to write ipfw rules with the right UID.
 Binding tpws to ports >=1024 is dangerous. If tpws is not running any unprivileged process can
 listen to that port and intercept traffic.
-
 
 OpenBSD
 -------
