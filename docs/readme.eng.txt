@@ -570,7 +570,7 @@ Tables zapret, nozapret, ipban are created by ipset/*.sh scripts the same way as
 When using ipfw tpws does not require special permissions for transparent mode.
 However without root its not possible to bind to ports <1024 and change UID/GID. Without changing UID tpws
 will run into recursive loop, and that's why its necessary to write ipfw rules with the right UID.
-Binding tpws to ports >=1024 is dangerous. If tpws is not running any unprivileged process can
+Redirecting to ports >=1024 is dangerous. If tpws is not running any unprivileged process can
 listen to that port and intercept traffic.
 
 OpenBSD
