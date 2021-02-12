@@ -63,7 +63,7 @@ iptables -t raw -P OUTPUT ACCEPT
 
 
 
-em1 = LAN
+WAN=em0  LAN=em1
 
 FreeBSD IPFW  :
 ipfw delete 100
