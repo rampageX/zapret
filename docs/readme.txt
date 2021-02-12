@@ -514,6 +514,9 @@ zapret-ip.txt => zapret-ip6.txt
 Помещенные в них IP не участвуют в процессе.
 zapret-hosts-user-exclude.txt может содержать домены, ipv4 и ipv6 адреса или подсети.
 
+FreeBSD. Скрипты ipset/*.sh работают так же на FreeBSD. Вместо ipset они создают lookup таблицы ipfw с аналогичными именами.
+ipfw таблицы в отличие от ipset могут содержать как ipv4, так и ipv6 адреса и подсети в одной таблице, поэтому разделения нет.
+
 
 ip2net
 ------
@@ -1172,23 +1175,44 @@ connbytes придется опускать, поскольку модуля в 
 Некоторые наброски скриптов присутствуют в files/huawei. Не готовое решение ! Смотрите, изучайте, приспосабливайте.
 Здесь можно скачать готовые полезные статические бинарики для arm, включая curl : https://github.com/bol-van/bins
 
-FreeBSD, OpenBSD
-----------------
+FreeBSD
+-------
 
 mdig, ip2net, tpws работают на FreeBSD и OpenBSD
 nfqws недоступен.
-В OpenBSD для сборки tpws использовать 'make bsd' вместо 'make'
-в OpenBSD бинд по умолчанию только на ipv6. для бинда на ipv4 указать "--bind-addr=0.0.0.0"
+
+Сборка всех исходников : make -C /opt/zapret
 
 Краткая инструкция по запуску tpws в прозрачном режиме.
 Предполагается, что интерфейс LAN называется em1.
-FreeBSD IPFW  :
+
+Для всего трафика :
+ipfw delete 100
 ipfw add 100 fwd 127.0.0.1,1188 tcp from me to any 80,443 proto ip4 not uid daemon
 ipfw add 100 fwd ::1,1188 tcp from me to any 80,443 proto ip6 not uid daemon
 ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
 ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
 tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
-Удалить правила : ipfw delete 100
+
+Для трафика только на таблицу zapret, за исключением таблицы nozapret :
+ipfw delete 100
+ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
+ipfw add 100 fwd 127.0.0.1,1188 tcp from me to table\(zapret\) 80,443 proto ip4 not uid daemon
+ipfw add 100 fwd ::1,1188 tcp from me to table\(zapret\) 80,443 proto ip6 not uid daemon
+ipfw add 100 allow tcp from any to table\(nozapret\) 80,443 recv em1
+ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
+tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+Таблицы zapret, nozapret, ipban создаются скриптами из ipset по аналогии с Linux.
+
+OpenBSD
+-------
+
+mdig, ip2net, tpws работают на FreeBSD и OpenBSD
+nfqws недоступен.
+Для сборки tpws использовать 'make bsd' вместо 'make'
+Бинд по умолчанию только на ipv6. для бинда на ipv4 указать "--bind-addr=0.0.0.0"
 
 OpenBSD PF :
 /etc/pf.conf

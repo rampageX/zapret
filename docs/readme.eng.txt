@@ -359,6 +359,10 @@ They are the source for ipsets nozapret/nozapret6. All rules created by init scr
 The IPs placed in them are not involved in the process.
 zapret-hosts-user-exclude.txt can contain domains, ipv4 and ipv6 addresses or subnets.
 
+FreeBSD. ipset/*.sh scripts also work in FreeBSD. Instead of ipset they create ipfw lookup tables with the same names as in Linux.
+ipfw tables can store both ipv4 and ipv6 addresses and subnets. There's no 4 and 6 separation.
+
+
 Domain name filtering
 ---------------------
 
@@ -531,23 +535,45 @@ chcon u:object_r:system_file:s0 /data/local/tmp/zapret/tpws
 Now its possible to run /data/local/tmp/zapret/tpws from any app such as tasker.
 
 
-FreeBSD, OpenBSD
-----------------
+FreeBSD
+-------
+
+mdig, ip2net, tpws work in FreeBSD and OpenBSD
+nfqws is not compatible
+
+compile from source : make -C /opt/zapret
+
+tpws transparent mode quick start.
+LAN interface is named 'em1'.
+
+For all traffic:
+ipfw delete 100
+ipfw add 100 fwd 127.0.0.1,1188 tcp from me to any 80,443 proto ip4 not uid daemon
+ipfw add 100 fwd ::1,1188 tcp from me to any 80,443 proto ip6 not uid daemon
+ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
+/opt/zapret/tpws/tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+Process only table zapret with the exception of table nozapret :
+ipfw delete 100
+ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
+ipfw add 100 fwd 127.0.0.1,1188 tcp from me to table\(zapret\) 80,443 proto ip4 not uid daemon
+ipfw add 100 fwd ::1,1188 tcp from me to table\(zapret\) 80,443 proto ip6 not uid daemon
+ipfw add 100 allow tcp from any to table\(nozapret\) 80,443 recv em1
+ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
+/opt/zapret/tpws/tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+Tables zapret, nozapret, ipban are created by ipset/*.sh scripts the same way as in Linux.
+
+
+OpenBSD
+-------
 
 mdig, ip2net, tpws work in FreeBSD and OpenBSD
 nfqws is not compatible
 to compile tpws in OpenBSD use : 'make bsd'. not just 'make'
 in openbsd default bind is ipv6 only. to bind to ipv4 specify --bind-addr=0.0.0.0
-
-Brief howto for tpws transparent mode.
-LAN interface is named 'em1'.
-FreeBSD IPFW  :
-ipfw add 100 fwd 127.0.0.1,1188 tcp from me to any 80,443 proto ip4 not uid daemon
-ipfw add 100 fwd ::1,1188 tcp from me to any 80,443 proto ip6 not uid daemon
-ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
-ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
-tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
-Delete rules : ipfw delete 100
 
 OpenBSD PF :
 /etc/pf.conf
