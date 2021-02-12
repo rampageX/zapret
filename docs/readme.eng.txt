@@ -544,12 +544,12 @@ nfqws is not compatible
 compile from source : make -C /opt/zapret
 
 tpws transparent mode quick start.
-LAN interface is named 'em1'.
+LAN='em1', WAN="em0".
 
 For all traffic:
 ipfw delete 100
-ipfw add 100 fwd 127.0.0.1,1188 tcp from me to any 80,443 proto ip4 not uid daemon
-ipfw add 100 fwd ::1,1188 tcp from me to any 80,443 proto ip6 not uid daemon
+ipfw add 100 fwd 127.0.0.1,1188 tcp from me to any 80,443 proto ip4 xmit em0 not uid daemon
+ipfw add 100 fwd ::1,1188 tcp from me to any 80,443 proto ip6 xmit em0 not uid daemon
 ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
 ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
 /opt/zapret/tpws/tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
@@ -557,15 +557,14 @@ ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
 Process only table zapret with the exception of table nozapret :
 ipfw delete 100
 ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
-ipfw add 100 fwd 127.0.0.1,1188 tcp from me to table\(zapret\) 80,443 proto ip4 not uid daemon
-ipfw add 100 fwd ::1,1188 tcp from me to table\(zapret\) 80,443 proto ip6 not uid daemon
+ipfw add 100 fwd 127.0.0.1,1188 tcp from me to table\(zapret\) 80,443 proto ip4 xmit em0 not uid daemon
+ipfw add 100 fwd ::1,1188 tcp from me to table\(zapret\) 80,443 proto ip6 xmit em0 not uid daemon
 ipfw add 100 allow tcp from any to table\(nozapret\) 80,443 recv em1
 ipfw add 100 fwd 127.0.0.1,1188 tcp from any to any 80,443 proto ip4 recv em1
 ipfw add 100 fwd ::1,1188 tcp from any to any 80,443 proto ip6 recv em1
 /opt/zapret/tpws/tpws --port=1188 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 Tables zapret, nozapret, ipban are created by ipset/*.sh scripts the same way as in Linux.
-
 
 OpenBSD
 -------
