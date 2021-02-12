@@ -123,17 +123,24 @@ random()
 
 check_system()
 {
+	local UNAME=$(uname)
+
 	echo \* checking system
 
 	SYSTEM=""
 	SYSTEMCTL=$(whichq systemctl)
 
-	if [ -x "$SYSTEMCTL" ] ; then
-		SYSTEM=systemd
-	elif [ -f "/etc/openwrt_release" ] && exists opkg && exists uci ; then
-		SYSTEM=openwrt
+	if [ "$UNAME" = "Linux" ]; then
+		if [ -x "$SYSTEMCTL" ] ; then
+			SYSTEM=systemd
+		elif [ -f "/etc/openwrt_release" ] && exists opkg && exists uci ; then
+			SYSTEM=openwrt
+		else
+			echo system is not either systemd based or openwrt. check readme.txt for manual setup info.
+			exitp 5
+		fi
 	else
-		echo system is not either systemd based or openwrt
+		echo easy installer only supports Linux. check readme.txt for supported systems and manual setup info.
 		exitp 5
 	fi
 	echo system is based on $SYSTEM
