@@ -7,6 +7,7 @@
 
 #include <sys/capability.h>
 
+bool checkpcap(uint64_t caps);
 bool setpcap(uint64_t caps);
 int getmaxcap();
 bool dropcaps();
