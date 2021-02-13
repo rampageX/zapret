@@ -1183,7 +1183,7 @@ mdig, ip2net, tpws работают на FreeBSD и OpenBSD
 nfqws недоступен.
 
 Сборка всех исходников : make -C /opt/zapret
-Включение поддержки PF (не нужно и нежелательно при использовании ipfw) : make -C /opt/zapret/tpws CFLAGS=-DUSE_PF
+Включение поддержки PF (не нужно и нежелательно при использовании ipfw) : make -C /opt/zapret CFLAGS=-DUSE_PF
 
 Краткая инструкция по запуску tpws в прозрачном режиме.
 Предполагается, что интерфейс LAN называется em1, WAN - em0.

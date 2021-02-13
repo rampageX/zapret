@@ -542,7 +542,7 @@ mdig, ip2net, tpws work in FreeBSD and OpenBSD
 nfqws is not compatible
 
 compile from source : make -C /opt/zapret
-enable PF support (not required and not desired if using ipfw) : make -C /opt/zapret/tpws CFLAGS=-DUSE_PF
+enable PF support (not required and not desired if using ipfw) : make -C /opt/zapret CFLAGS=-DUSE_PF
 
 tpws transparent mode quick start.
 LAN='em1', WAN="em0".
