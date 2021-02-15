@@ -13,7 +13,7 @@ get_antifilter()
     exit 2
    fi
    cat "$ZIPLISTTMP" | zz "$2"
-   rm -f "$ZIPLISTTMP" "$2"
+   rm -f "$ZIPLISTTMP"
   }
  }
 }

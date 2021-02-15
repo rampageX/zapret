@@ -1,6 +1,8 @@
 . "$EXEDIR/../config"
 
 [ -z "$TMPDIR" ] && TMPDIR=/tmp
+[ -z "$GZIP_LISTS" ] && GZIP_LISTS=1
+
 ZIPSET=zapret
 ZIPSET6=zapret6
 ZIPSET_EXCLUDE=nozapret
@@ -23,6 +25,7 @@ ZIPLIST_USER_IPBAN6="$EXEDIR/zapret-ip-user-ipban6.txt"
 ZUSERLIST_IPBAN="$EXEDIR/zapret-hosts-user-ipban.txt"
 ZUSERLIST_EXCLUDE="$EXEDIR/zapret-hosts-user-exclude.txt"
 
+
 MDIG="$EXEDIR/../mdig/mdig"
 [ -z "$MDIG_THREADS" ] && MDIG_THREADS=30
 
@@ -40,7 +43,13 @@ zzcat()
 }
 zz()
 {
- gzip -c >"$1.gz"
+ if [ "$GZIP_LISTS" == "1" ]; then
+  gzip -c >"$1.gz"
+  rm -f "$1"
+ else
+  cat >"$1"
+  rm -f "$1.gz"
+ fi
 }
 zzsize()
 {
