@@ -546,8 +546,10 @@ int main(int argc, char **argv)
 		{"dpi-desync",required_argument,0,0},		// optidx=11
 #ifdef __linux__
 		{"dpi-desync-fwmark",required_argument,0,0},	// optidx=12
-#else
+#elif defined(SO_USER_COOKIE)
 		{"dpi-desync-sockarg",required_argument,0,0},	// optidx=12
+#else
+		{"disabled_argument_2",no_argument,0,0},	// optidx=12
 #endif
 		{"dpi-desync-ttl",required_argument,0,0},	// optidx=13
 		{"dpi-desync-fooling",required_argument,0,0},	// optidx=14
