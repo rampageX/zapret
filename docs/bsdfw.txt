@@ -19,9 +19,11 @@ ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
 /opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 
-; FreeBSD does artificially ignore sockarg for ipv6 in the kernel
-; Its limitation coming from the ipv6 early age. Still in "testing" state. 10-20 years. Everybody forgot about it.
+; Loop avoidance.
+; FreeBSD artificially ignores sockarg for ipv6 in the kernel.
+; This limitation is coming from the ipv6 early age. Code is still in "testing" state. 10-20 years. Everybody forgot about it.
 ; dvtws sends ipv6 forged frames using another divert socket (HACK). they can be filtered out using 'diverted'.
+
 
 ipfw delete 100
 ipfw add 100 allow all from any to any diverted out

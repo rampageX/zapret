@@ -93,6 +93,11 @@ ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
 ipfw add 100 divert 989 tcp from any to table\(zapret\) 80,443 out not diverted not sockarg xmit em0
 /opt/zapret/nfq/dvtws --port=989 --debug --dpi-desync=split
 
+Reinjection loop avoidance.
+FreeBSD artificially ignores sockarg for ipv6 in the kernel.
+This limitation is coming from the ipv6 early age. Code is still in "testing" state. 10-20 years. Everybody forgot about it.
+dvtws sends ipv6 forged frames using another divert socket (HACK). they can be filtered out using 'diverted'.
+ipv4 frames are filtered using 'sockarg'.
 
 OpenBSD
 -------

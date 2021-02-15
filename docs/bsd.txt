@@ -100,6 +100,15 @@ ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
 ipfw add 100 divert 989 tcp from any to table\(zapret\) 80,443 out not diverted not sockarg xmit em0
 /opt/zapret/nfq/dvtws --port=989 --debug --dpi-desync=split
 
+Недопущение зацикливания - повторного вхождения фейк пакетов на обработку.
+FreeBSD игнорирует sockarg в ipv6.
+Это искусственное ограничение в коде ядра, которое тянется уже лет 10-20.
+Кто-то в свое время посчитал код сырым, и до сих пор никто не удосужился поправить.
+dvtws в FreeBSD отсылает ipv4 фреймы через raw socket. Такие пакеты не 'diverted'. Они отсекаются по 'sockarg'.
+Для отсылки ipv6 фейков используется divert socket, потому что ipv6 raw сокеты в BSD не дают самому
+формировать IP заголовок и подменять source address. Фейки в ipv6 'diverted'. Они отсекаются по 'diverted'.
+В linux nfqws для недопущения зацикливания используется fwmark.
+
 
 OpenBSD
 -------
