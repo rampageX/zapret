@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "sec.h"
@@ -5,7 +7,6 @@
 #include <fcntl.h>
 
 #ifdef __linux__
-
 #include <sys/prctl.h>
 
 bool checkpcap(uint64_t caps)
@@ -37,7 +38,7 @@ int getmaxcap()
 	FILE *F = fopen("/proc/sys/kernel/cap_last_cap", "r");
 	if (F)
 	{
-		fscanf(F, "%d", &maxcap);
+		int n = fscanf(F, "%d", &maxcap);
 		fclose(F);
 	}
 	return maxcap;

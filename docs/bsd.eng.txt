@@ -1,0 +1,123 @@
+BSD features
+------------
+
+BSD does not have NFQUEUE. Similar mechanism - divert sockets.
+In BSD compiling the source from nfq directory result in dvtws binary instead of nfqws.
+dvtws shares most of the code with nfqws and offers almost identical parameters.
+
+FreeBSD has 2 firewalls : IPFilter (ipfw) and Packet Filter (PF). OpenBSD has only PF.
+
+To compile sources in FreeBSD use 'make', in OpenBSD - use 'make bsd'.
+Compile all programs : make -C /opt/zapret
+Compile all programs with PF support : make -C /opt/zapret CFLAGS=-DUSE_PF
+In FreeBSD enable PF only if you use it. Its undesirable if you don't.
+PF is enabled automatically in OpenBSD.
+
+Divert sockets require special kernel module 'ipdivert'.
+To enable it in FreeBSD add the following parameter to /etc/rc.conf :
+natd_enable="YES"
+To enable ipfw :
+firewall_enable="YES"
+
+Divert sockets are internal type sockets in the BSD kernel. They have no relation to network addresses
+or network packet exchange. They are identified by a port number 1..65535. Its like queue number in NFQUEUE.
+Traffic can be diverted to a divert socket using firewall rule.
+If nobody listens on the specified divert port packets are dropped. Its similar to NFQUEUE without --queue-bypass.
+
+ipset/*.sh scripts work with ipfw lookup tables if ipfw is present.
+ipfw table is analog to linux ipset. Unlike ipsets ipfw tables share v4 an v6 addresses and subnets.
+If ipfw is absent scripts only create lists but do not load them.
+
+PF can load ip tables from a file. To use this feature with ipset/*.sh scripts disable gzip file creation
+using "GZIP=LISTS=0" directive in the /opt/zapret/config file.
+
+BSD kernel doesn't implement splice syscall. tpws uses regular recv/send operations with data copying to user space.
+Its slower but not critical.
+tpws uses nonblocking sockets with linux specific epoll feature.
+In BSD its emulated in the epoll-shim library. It uses kqueue.
+
+tpws uses only documented APIs but dvtws also uses some HACKs, assumptions and knowledge of discovered bugs and limitations.
+BSD systems have many unlogical limitations, version specific features and bugs in low level networking, especially for ipv6.
+Many years have passed but BSD code still has 15-20 year artificial limiters in the code.
+dvtws uses additinal divert socket(s) for layer 3 packet injection if raw sockets do not allow it.
+It works for the moment but who knows. Such a usage is not very documented.
+
+mdig and ip2net are fully compatible with BSD.
+
+FreeBSD
+-------
+
+Assume LAN='em1', WAN="em0".
+
+tpws transparent mode quick start.
+
+For all traffic:
+ipfw delete 100
+ipfw add 100 fwd 127.0.0.1,988 tcp from me to any 80,443 proto ip4 xmit em0 not uid daemon
+ipfw add 100 fwd ::1,988 tcp from me to any 80,443 proto ip6 xmit em0 not uid daemon
+ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
+/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+Process only table zapret with the exception of table nozapret :
+ipfw delete 100
+ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
+ipfw add 100 fwd 127.0.0.1,988 tcp from me to table\(zapret\) 80,443 proto ip4 xmit em0 not uid daemon
+ipfw add 100 fwd ::1,988 tcp from me to table\(zapret\) 80,443 proto ip6 xmit em0 not uid daemon
+ipfw add 100 allow tcp from any to table\(nozapret\) 80,443 recv em1
+ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
+/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+Tables zapret, nozapret, ipban are created by ipset/*.sh scripts the same way as in Linux.
+
+When using ipfw tpws does not require special permissions for transparent mode.
+However without root its not possible to bind to ports <1024 and change UID/GID. Without changing UID tpws
+will run into recursive loop, and that's why its necessary to write ipfw rules with the right UID.
+Redirecting to ports >=1024 is dangerous. If tpws is not running any unprivileged process can
+listen to that port and intercept traffic.
+
+
+dvtws quick start.
+
+For all traffic:
+ipfw delete 100
+ipfw add 100 allow all from any to any diverted out
+ipfw add 100 divert 989 tcp from any to any 80,443 out not diverted not sockarg xmit em0
+/opt/zapret/nfq/dvtws --port=989 --debug --dpi-desync=split
+
+Process only table zapret with the exception of table nozapret :
+ipfw delete 100
+ipfw add 100 allow all from any to any diverted out
+ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
+ipfw add 100 divert 989 tcp from any to table\(zapret\) 80,443 out not diverted not sockarg xmit em0
+/opt/zapret/nfq/dvtws --port=989 --debug --dpi-desync=split
+
+
+OpenBSD
+-------
+
+In OpenBSD default tpws bind is ipv6 only. to bind to ipv4 specify --bind-addr=0.0.0.0
+Use --bind-addr=0.0.0.0 --bind-addr=::  to achieve the same bind as in others OSes.
+
+tpws for forwarded traffic only :
+
+OpenBSD PF :
+/etc/pf.conf
+pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 988 
+pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 988 
+pfctl -f /etc/pf.conf
+tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+Its not clear how to to rdr-to from the same system the proxy runs on.
+rdr-to support is done using /dev/pf, that's why transparent mode requires root.
+
+dvtws for all traffic:
+
+pass out quick on em0 inet  proto tcp to port {80,443} divert-packet port 989
+pass out quick on em0 inet6 proto tcp to port {80,443} divert-packet port 989
+pfctl -f /etc/pf.conf
+./dvtws --port=989 --dpi-desync=split2
+
+OpenBSD forcibly recomputes tcp checksum after divert. Thats why most likely
+dpi-desync-fooling=badsum will not work. dvtws will warn if you specify this parameter.

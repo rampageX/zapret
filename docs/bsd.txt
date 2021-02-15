@@ -1,0 +1,132 @@
+Особенности BSD систем
+----------------------
+
+В BSD нет nfqueue. Похожий механизм - divert sockets.
+Из каталога "nfq" под BSD собирается dvtws вместо nfqws.
+Он разделяет с nfqws большую часть кода и почти совпадает по параметрам командной строки.
+
+FreeBSD содержит 2 фаервола : IPFilter (ipfw) и Packet Filter (PF). OpenBSD содержит только PF.
+
+Под FreeBSD tpws и dvtws собираются через "make", под OpenBSD - "make bsd".
+FreeBSD make распознает BSDmakefile , OpenBSD - нет. Поэтому там используется отдельный target в Makefile.
+Сборка всех исходников : make -C /opt/zapret
+Сборка всех исходников с поддержкой PF : make -C /opt/zapret CFLAGS=-DUSE_PF
+В FreeBSD поддержку PF нужно включать только, если вы его используете. Иначе это нежелательно !
+В OpenBSD PF при сборке включается автоматически.
+
+divert сокеты требуют специального модуля ядра ipdivert. В FreeBSD его загрузку обеспечивает параметр /etc/rc.conf
+natd_enable="YES"
+Загрузку ipfw обеспечивает
+firewall_enable="YES"
+
+divert сокет - внутренний тип сокета ядра BSD. Он не привязывается ни к какому сетевому адресу, не участвует
+в обмене данными через сеть и идентифицируется по номеру порта 1..65535. Аналогия с номером очереди NFQUEUE.
+На divert сокеты заворачивается трафик посредством правил ipfw или PF.
+Если в фаерволе есть правило divert, но на divert порту никто не слушает, то пакеты дропаются.
+Это поведение аналогично правилам NFQUEUE без параметра --queue-bypass.
+На FreeBSD divert сокеты могут быть только ipv4, хотя на них принимаются и ipv4, и ipv6 фреймы.
+На OpenBSD divert сокеты создаются отдельно для ipv4 и ipv6 и работают только с одной версией ip каждый.
+Отсылка в divert сокет работает аналогично отсылке через raw socket на linux. Передается полностью IP фрейм, начиная
+с ip загловка . Эти особенности учитываются в dvtws.
+
+Скрипты ipset/*.sh при наличии ipfw работают с ipfw lookup tables.
+Это прямой аналог ipset. lookup tables не разделены на v4 и v6. Они могут содержать v4 и v6 адреса и подсети одновременно.
+Если ipfw отсутствует, скрипты создают листы, но никуда их не загружают.
+
+PF может загружать ip таблицы из файла. Чтобы использовать эту возможность следует отключить сжатие gzip для листов
+через параметр файла config "GZIP_LISTS=0".
+
+BSD не содержит системного вызова splice. tpws работает через переброску данных в user mode в оба конца.
+Это медленнее, но не критически.
+Управление асинхронными сокетами в tpws основано на linux-specific механизме epoll.
+В BSD для его эмуляции используется epoll-shim - прослойка для эмуляции epoll на базе kqueue.
+
+Если в tpws все документированно, то некоторые функции dvtws пришлось реализовывать через хаки.
+В BSD много нелогичных ограничений, особенностей и багов при работе с низкоуровневой сетью, в особенности в области ipv6.
+Казалось бы столько лет прошло, а в коде все еще сидят ограничители 15-20 летней давности.
+Прямая отсылка ipv6 фреймов с измененным source address и вовсе невозможна через raw sockets.
+OpenBSD не дает отсылать через raw sockets tcp фреймы.
+Там, где функции нельзя было реализовать напрямую, либо их реализация привела бы к залезанию в низкоуровневые дебри,
+используются те же divert сокеты. Оказывается через них можно скармливать ядру любые пакеты, обходя ограничения
+raw sockets. Не знаю насколько это легально, но пока это работает. Однако, имейте в виду. Что-то может сломаться.
+
+mdig и ip2net полностью работоспособны в BSD. В них нет ничего системо-зависимого.
+
+FreeBSD
+-------
+
+Краткая инструкция по запуску tpws в прозрачном режиме.
+Предполагается, что интерфейс LAN называется em1, WAN - em0.
+
+Для всего трафика :
+ipfw delete 100
+ipfw add 100 fwd 127.0.0.1,988 tcp from me to any 80,443 proto ip4 xmit em0 not uid daemon
+ipfw add 100 fwd ::1,988 tcp from me to any 80,443 proto ip6 xmit em0 not uid daemon
+ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
+/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+Для трафика только на таблицу zapret, за исключением таблицы nozapret :
+ipfw delete 100
+ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
+ipfw add 100 fwd 127.0.0.1,988 tcp from me to table\(zapret\) 80,443 proto ip4 xmit em0 not uid daemon
+ipfw add 100 fwd ::1,988 tcp from me to table\(zapret\) 80,443 proto ip6 xmit em0 not uid daemon
+ipfw add 100 allow tcp from any to table\(nozapret\) 80,443 recv em1
+ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
+ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
+/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+Таблицы zapret, nozapret, ipban создаются скриптами из ipset по аналогии с Linux.
+
+При использовании ipfw tpws не требует повышенных привилегий для реализации прозрачного режима.
+Однако, без рута невозможен бинд на порты <1024 и смена UID/GID. Без смены UID будет рекурсия,
+поэтому правила ipfw нужно создавать с учетом UID, под которым работает tpws.
+Переадресация на порты >=1024 может создать угрозу перехвата трафика непривилегированным
+процессом, если вдруг tpws не запущен.
+
+
+Краткая инструкция по запуску dvtws.
+
+Для всего трафика :
+ipfw delete 100
+ipfw add 100 allow all from any to any diverted out
+ipfw add 100 divert 989 tcp from any to any 80,443 out not diverted not sockarg xmit em0
+/opt/zapret/nfq/dvtws --port=989 --debug --dpi-desync=split
+
+Для трафика только на таблицу zapret, за исключением таблицы nozapret :
+ipfw delete 100
+ipfw add 100 allow all from any to any diverted out
+ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
+ipfw add 100 divert 989 tcp from any to table\(zapret\) 80,443 out not diverted not sockarg xmit em0
+/opt/zapret/nfq/dvtws --port=989 --debug --dpi-desync=split
+
+
+OpenBSD
+-------
+
+В tpws бинд по умолчанию только на ipv6. для бинда на ipv4 указать "--bind-addr=0.0.0.0"
+Используйте --bind-addr=0.0.0.0 --bind-addr=::  для достижения того же результата, как в других ОС по умолчанию.
+(лучше все же так не делать, а сажать на определенные внутренние адреса или интерфейсы)
+
+tpws для проходящего трафика :
+
+OpenBSD PF :
+/etc/pf.conf
+pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 988 
+pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 988 
+pfctl -f /etc/pf.conf
+tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
+
+В PF непонятно как делать rdr-to с той же системы, где работает proxy.
+Поддержка rdr-to реализована через /dev/pf, поэтому прозрачный режим требует root.
+
+dvtws для всего трафика :
+
+pass out quick on em0 inet  proto tcp to port {80,443} divert-packet port 989
+pass out quick on em0 inet6 proto tcp to port {80,443} divert-packet port 989
+pfctl -f /etc/pf.conf
+./dvtws --port=989 --dpi-desync=split2
+
+OpenBSD принудительно пересчитывает tcp checksum после divert, поэтому скорее всего
+dpi-desync-fooling=badsum у вас не заработает. При использовании этого параметра
+dvtws предупредит о возможной проблеме.

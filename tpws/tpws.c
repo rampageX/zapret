@@ -198,6 +198,7 @@ void parse_params(int argc, char *argv[])
 	params.maxconn = DEFAULT_MAX_CONN;
 	params.max_orphan_time = DEFAULT_MAX_ORPHAN_TIME;
 	params.binds_last = -1;
+	params.uid = params.gid = 0x7FFFFFFF; // default uid:gid
 
 	const struct option long_options[] = {
 		{ "help",no_argument,0,0 },// optidx=0
@@ -749,6 +750,11 @@ int main(int argc, char *argv[])
 		goto exiterr;
 	}
 
+	if (params.proxy_type==CONN_TYPE_TRANSPARENT && !redir_init())
+	{
+		fprintf(stderr,"could not initialize redirector !!!\n");
+		goto exiterr;
+	}
 
 	for(i=0;i<=params.binds_last;i++)
 	{
@@ -777,10 +783,6 @@ int main(int argc, char *argv[])
 		//This allows the socket to accept connections for non-local IPs
 		if (params.proxy_type==CONN_TYPE_TRANSPARENT)
 		{
-			if (!redir_init())
-			{
-				fprintf(stderr,"could not initialize redirector\n");
-			}
 		#ifdef __linux__
 			if (setsockopt(listen_fd[i], SOL_IP, IP_TRANSPARENT, &yes, sizeof(yes)) == -1)
 			{

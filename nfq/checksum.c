@@ -104,10 +104,10 @@ uint16_t ip4_compute_csum(const void *buff, size_t len)
 {
 	return ~from64to16(do_csum(buff,len));
 }
-void ip4_fix_checksum(struct iphdr *ip)
+void ip4_fix_checksum(struct ip *ip)
 {
-	ip->check = 0;
-	ip->check = ip4_compute_csum(ip, ip->ihl<<2);
+	ip->ip_sum = 0;
+	ip->ip_sum = ip4_compute_csum(ip, ip->ip_hl<<2);
 }
 
 uint16_t csum_ipv6_magic(const void *saddr, const void *daddr, size_t len, uint8_t proto, uint16_t sum)
@@ -119,20 +119,20 @@ uint16_t csum_ipv6_magic(const void *saddr, const void *daddr, size_t len, uint8
 }
 
 
-void tcp4_fix_checksum(struct tcphdr *tcp,size_t len, in_addr_t src_addr, in_addr_t dest_addr)
+void tcp4_fix_checksum(struct tcphdr *tcp,size_t len, const struct in_addr *src_addr, const struct in_addr *dest_addr)
 {
-	tcp->check = 0;
-	tcp->check = csum_tcpudp_magic(src_addr,dest_addr,len,IPPROTO_TCP,csum_partial(tcp, len));
+	tcp->th_sum = 0;
+	tcp->th_sum = csum_tcpudp_magic(src_addr->s_addr,dest_addr->s_addr,len,IPPROTO_TCP,csum_partial(tcp, len));
 }
 void tcp6_fix_checksum(struct tcphdr *tcp,size_t len, const struct in6_addr *src_addr, const struct in6_addr *dest_addr)
 {
-	tcp->check = 0;
-	tcp->check = csum_ipv6_magic(src_addr,dest_addr,len,IPPROTO_TCP,csum_partial(tcp, len));	
+	tcp->th_sum = 0;
+	tcp->th_sum = csum_ipv6_magic(src_addr,dest_addr,len,IPPROTO_TCP,csum_partial(tcp, len));	
 }
-void tcp_fix_checksum(struct tcphdr *tcp,size_t len,const struct iphdr *iphdr,const struct ip6_hdr *ip6hdr)
+void tcp_fix_checksum(struct tcphdr *tcp,size_t len,const struct ip *ip,const struct ip6_hdr *ip6hdr)
 {
-	if (iphdr)
-		tcp4_fix_checksum(tcp, len, iphdr->saddr, iphdr->daddr);
+	if (ip)
+		tcp4_fix_checksum(tcp, len, &ip->ip_src, &ip->ip_dst);
 	else if (ip6hdr)
 		tcp6_fix_checksum(tcp, len, &ip6hdr->ip6_src, &ip6hdr->ip6_dst);
 }

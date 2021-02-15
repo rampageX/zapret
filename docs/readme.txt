@@ -1,4 +1,4 @@
-﻿zapret v.35
+﻿zapret v.36
 
 English
 -------
@@ -12,7 +12,8 @@ For english version refer to docs/readme.eng.txt
 Проект нацелен прежде всего на маломощные embedded устройства - роутеры, работающие под openwrt,
 но так же поддерживается и большинство классических дистрибутивов linux, использующих systemd.
 В некоторых случаях возможна самостоятельная прикрутка решения к различным прошивкам.
-Ограниченно поддерживаются системы FreeBSD и OpenBSD.
+
+Так же поддерживаются в экспериментальном режиме системы FreeBSD и OpenBSD.
 
 Как это работает
 ----------------
@@ -684,6 +685,9 @@ IPSET_OPT="hashsize 262144 maxelem 2097152"
 IP2NET_OPT4="--prefix-length=22-30 --v4-threshold=3/4"
 IP2NET_OPT6="--prefix-length=56-64 --v6-threshold=5"
 
+Включить или выключить сжатие больших листов в скриптах ipset/*.sh. По умолчанию включено.
+GZIP_LISTS=1
+
 Следующие настройки не актуальны для openwrt :
 
 Если ваша система работает как роутер, то нужно вписать названия внутреннего и внешнего интерфейсов :
@@ -1176,62 +1180,10 @@ connbytes придется опускать, поскольку модуля в 
 Здесь можно скачать готовые полезные статические бинарики для arm, включая curl : https://github.com/bol-van/bins
 
 
-FreeBSD
--------
+FreeBSD, OpenBSD
+----------------
 
-mdig, ip2net, tpws работают на FreeBSD и OpenBSD
-nfqws недоступен.
-
-Сборка всех исходников : make -C /opt/zapret
-Включение поддержки PF (не нужно и нежелательно при использовании ipfw) : make -C /opt/zapret CFLAGS=-DUSE_PF
-
-Краткая инструкция по запуску tpws в прозрачном режиме.
-Предполагается, что интерфейс LAN называется em1, WAN - em0.
-
-Для всего трафика :
-ipfw delete 100
-ipfw add 100 fwd 127.0.0.1,988 tcp from me to any 80,443 proto ip4 xmit em0 not uid daemon
-ipfw add 100 fwd ::1,988 tcp from me to any 80,443 proto ip6 xmit em0 not uid daemon
-ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
-ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
-/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
-
-Для трафика только на таблицу zapret, за исключением таблицы nozapret :
-ipfw delete 100
-ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
-ipfw add 100 fwd 127.0.0.1,988 tcp from me to table\(zapret\) 80,443 proto ip4 xmit em0 not uid daemon
-ipfw add 100 fwd ::1,988 tcp from me to table\(zapret\) 80,443 proto ip6 xmit em0 not uid daemon
-ipfw add 100 allow tcp from any to table\(nozapret\) 80,443 recv em1
-ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
-ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
-/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
-
-Таблицы zapret, nozapret, ipban создаются скриптами из ipset по аналогии с Linux.
-
-При использовании ipfw tpws не требует повышенных привилегий для реализации прозрачного режима.
-Однако, без рута невозможен бинд на порты <1024 и смена UID/GID. Без смены UID будет рекурсия,
-поэтому правила ipfw нужно создавать с учетом UID, под которым работает tpws.
-Переадресация на порты >=1024 может создать угрозу перехвата трафика непривилегированным
-процессом, если вдруг tpws не запущен.
-
-OpenBSD
--------
-
-mdig, ip2net, tpws работают на FreeBSD и OpenBSD
-nfqws недоступен.
-Для сборки tpws использовать 'make bsd' вместо 'make'
-Бинд по умолчанию только на ipv6. для бинда на ipv4 указать "--bind-addr=0.0.0.0"
-
-OpenBSD PF :
-/etc/pf.conf
-pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 988 
-pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 988 
-pfctl -f /etc/pf.conf
-tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
-
-В PF непонятно как делать rdr-to с той же системы, где работает proxy.
-Попытки завести divert-to так же не увенчались успехом.
-Поддержка rdr-to реализована через /dev/pf, поэтому прозрачный режим требует root.
+Описано в docs/bsd.txt
 
 
 Windows (WSL)

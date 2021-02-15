@@ -177,3 +177,7 @@ nfqws : custom fake http request and tls client hello
 v35
 
 limited FreeBSD and OpenBSD support
+
+v36
+
+full FreeBSD and OpenBSD support

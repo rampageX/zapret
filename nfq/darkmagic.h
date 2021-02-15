@@ -51,15 +51,26 @@ bool prepare_tcp_segment(
 	const void *data, uint16_t len,
 	uint8_t *buf, size_t *buflen);
 
-void extract_endpoints(const struct iphdr *iphdr,const struct ip6_hdr *ip6hdr,const struct tcphdr *tcphdr, struct sockaddr_storage *src, struct sockaddr_storage *dst);
+void extract_endpoints(const struct ip *ip,const struct ip6_hdr *ip6hdr,const struct tcphdr *tcphdr, struct sockaddr_storage *src, struct sockaddr_storage *dst);
 uint8_t *tcp_find_option(struct tcphdr *tcp, uint8_t kind);
 uint32_t *tcp_find_timestamps(struct tcphdr *tcp);
 
 // auto creates internal socket and uses it for subsequent calls
-bool rawsend(struct sockaddr* dst,uint32_t fwmark,const void *data,size_t len);
+bool rawsend(const struct sockaddr* dst,uint32_t fwmark,const void *data,size_t len);
+// should pre-do it if dropping privileges. otherwise its not necessary
+bool rawsend_preinit(uint32_t fwmark);
 // cleans up socket autocreated by rawsend
 void rawsend_cleanup();
 
-void print_iphdr(const struct iphdr *iphdr);
+void print_ip(const struct ip *ip);
 void print_ip6hdr(const struct ip6_hdr *ip6hdr, uint8_t proto);
 void print_tcphdr(const struct tcphdr *tcphdr);
+
+
+bool proto_check_ipv4(uint8_t *data, size_t len);
+void proto_skip_ipv4(uint8_t **data, size_t *len);
+bool proto_check_tcp(uint8_t *data, size_t len);
+void proto_skip_tcp(uint8_t **data, size_t *len);
+bool proto_check_ipv6(uint8_t *data, size_t len);
+void proto_skip_ipv6(uint8_t **data, size_t *len, uint8_t *proto_type);
+bool tcp_synack_segment(const struct tcphdr *tcphdr);

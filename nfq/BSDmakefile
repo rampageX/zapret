@@ -1,0 +1,12 @@
+CC ?= cc
+CFLAGS += -std=c99 -s -O3 -Wno-address-of-packed-member -Wno-switch
+LIBS = -lz
+SRC_FILES = *.c
+
+all: dvtws
+
+dvtws: $(SRC_FILES)
+	$(CC) $(CFLAGS) -o $@ $(SRC_FILES) $(LDFLAGS) $(LIBS)
+
+clean:
+	rm -f dvtws *.o

@@ -7,7 +7,7 @@ The project is mainly aimed at the Russian audience to fight russian regulator n
 Some features of the project are russian reality specific (such as getting list of sites
 blocked by Roskomnadzor), but most others are common.
 
-FreeBSD and OpenBSD system have limited support.
+(EXPERIMENTAL) FreeBSD and OpenBSD are also supported.
 
 How it works
 ------------
@@ -444,6 +444,27 @@ The number of threads for mdig multithreaded DNS resolver (1..100).
 The more of them, the faster, but will your DNS server be offended by hammering ?
 MDIG_THREADS=30
 
+temp directory. Used by ipset/*.sh scripts for large lists processing.
+/tmp by default. Can be reassigned if /tmp is tmpfs and RAM is low.
+TMPDIR=/opt/zapret/tmp
+
+ipset options :
+
+IPSET_OPT="hashsize 262144 maxelem 2097152"
+
+Kernel automatically increases hashsize if ipset is too large for the current hashsize.
+This procedure requires internal reallocation and may require additional memory.
+On low RAM systems it can cause errors.
+Do not use too high hashsize. This way you waste your RAM. And dont use too low hashsize to avoid reallocs.
+
+ip2net options. separate for ipv4 and ipv6.
+IP2NET_OPT4="--prefix-length=22-30 --v4-threshold=3/4"
+IP2NET_OPT6="--prefix-length=56-64 --v6-threshold=5"
+
+Enable gzip compression for large lists. Used by ipset/*.sh scripts.
+GZIP_LISTS=1
+
+
 The following settings are not relevant for openwrt :
 
 If your system works as a router, then you need to enter the names of the internal and external interfaces:
@@ -535,62 +556,10 @@ chcon u:object_r:system_file:s0 /data/local/tmp/zapret/tpws
 Now its possible to run /data/local/tmp/zapret/tpws from any app such as tasker.
 
 
-FreeBSD
--------
+FreeBSD, OpenBSD
+----------------
 
-mdig, ip2net, tpws work in FreeBSD and OpenBSD
-nfqws is not compatible
-
-compile from source : make -C /opt/zapret
-enable PF support (not required and not desired if using ipfw) : make -C /opt/zapret CFLAGS=-DUSE_PF
-
-tpws transparent mode quick start.
-LAN='em1', WAN="em0".
-
-For all traffic:
-ipfw delete 100
-ipfw add 100 fwd 127.0.0.1,988 tcp from me to any 80,443 proto ip4 xmit em0 not uid daemon
-ipfw add 100 fwd ::1,988 tcp from me to any 80,443 proto ip6 xmit em0 not uid daemon
-ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
-ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
-/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
-
-Process only table zapret with the exception of table nozapret :
-ipfw delete 100
-ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
-ipfw add 100 fwd 127.0.0.1,988 tcp from me to table\(zapret\) 80,443 proto ip4 xmit em0 not uid daemon
-ipfw add 100 fwd ::1,988 tcp from me to table\(zapret\) 80,443 proto ip6 xmit em0 not uid daemon
-ipfw add 100 allow tcp from any to table\(nozapret\) 80,443 recv em1
-ipfw add 100 fwd 127.0.0.1,988 tcp from any to any 80,443 proto ip4 recv em1
-ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
-/opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
-
-Tables zapret, nozapret, ipban are created by ipset/*.sh scripts the same way as in Linux.
-
-When using ipfw tpws does not require special permissions for transparent mode.
-However without root its not possible to bind to ports <1024 and change UID/GID. Without changing UID tpws
-will run into recursive loop, and that's why its necessary to write ipfw rules with the right UID.
-Redirecting to ports >=1024 is dangerous. If tpws is not running any unprivileged process can
-listen to that port and intercept traffic.
-
-OpenBSD
--------
-
-mdig, ip2net, tpws work in FreeBSD and OpenBSD
-nfqws is not compatible
-to compile tpws in OpenBSD use : 'make bsd'. not just 'make'
-in openbsd default bind is ipv6 only. to bind to ipv4 specify --bind-addr=0.0.0.0
-
-OpenBSD PF :
-/etc/pf.conf
-pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 988 
-pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 988 
-pfctl -f /etc/pf.conf
-tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
-
-Its not clear how to to rdr-to from the same system the proxy runs on.
-Also could not figure out how to use divert-to. It doesnt seem to work.
-rdr-to support is done using /dev/pf, that's why transparent mode requires root.
+see docs/bsd.eng.txt
 
 
 Windows (WSL)

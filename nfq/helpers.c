@@ -5,6 +5,22 @@
 #include <string.h>
 #include <ctype.h>
 
+void hexdump_limited_dlog(const uint8_t *data, size_t size, size_t limit)
+{
+	size_t k;
+	bool bcut=false;
+	if (size>limit)
+	{
+		size=limit;
+		bcut = true;
+	}
+	if (!size) return;
+	for (k=0;k<size;k++) DLOG("%02X ",data[k]);
+	DLOG(bcut ? "... : " : ": ");
+	for (k=0;k<size;k++) DLOG("%c",data[k]>=0x20 && data[k]<=0x7F ? (char)data[k] : '.');
+	if (bcut) DLOG(" ...");
+}
+
 void print_sockaddr(const struct sockaddr *sa)
 {
 	char str[64];

@@ -1,10 +1,16 @@
 #define _GNU_SOURCE
+
 #include "darkmagic.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/param.h>
+#include <errno.h>
+
+#include "helpers.h"
+
 
 uint32_t net32_add(uint32_t netorder_value, uint32_t cpuorder_increment)
 {
@@ -14,7 +20,7 @@ uint32_t net32_add(uint32_t netorder_value, uint32_t cpuorder_increment)
 uint8_t *tcp_find_option(struct tcphdr *tcp, uint8_t kind)
 {
 	uint8_t *t = (uint8_t*)(tcp+1);
-	uint8_t *end = (uint8_t*)tcp + (tcp->doff<<2);
+	uint8_t *end = (uint8_t*)tcp + (tcp->th_off<<2);
 	while(t<end)
 	{
 		switch(*t)
@@ -47,21 +53,21 @@ static void fill_tcphdr(struct tcphdr *tcp, uint8_t tcp_flags, uint32_t seq, uin
 	uint8_t t=0;
 
 	memset(tcp,0,sizeof(*tcp));
-	tcp->source     = nsport;
-	tcp->dest       = ndport;
+	tcp->th_sport     = nsport;
+	tcp->th_dport       = ndport;
 	if (fooling & TCP_FOOL_BADSEQ)
 	{
-		tcp->seq        = net32_add(seq,0x80000000);
-		tcp->ack_seq    = net32_add(ack_seq,0x80000000);
+		tcp->th_seq        = net32_add(seq,0x80000000);
+		tcp->th_ack    = net32_add(ack_seq,0x80000000);
 	}
 	else
 	{
-		tcp->seq        = seq;
-		tcp->ack_seq    = ack_seq;
+		tcp->th_seq        = seq;
+		tcp->th_ack    = ack_seq;
 	}
-	tcp->doff       = 5;
+	tcp->th_off       = 5;
 	*((uint8_t*)tcp+13)= tcp_flags;
-	tcp->window     = nwsize;
+	tcp->th_win     = nwsize;
 	if (fooling & TCP_FOOL_MD5SIG)
 	{
 		tcpopt[0] = 19; // kind
@@ -82,7 +88,7 @@ static void fill_tcphdr(struct tcphdr *tcp, uint8_t tcp_flags, uint32_t seq, uin
 		t+=10;
 	}
 	while (t&3) tcpopt[t++]=1; // noop
-	tcp->doff += t>>2;
+	tcp->th_off += t>>2;
 }
 static uint16_t tcpopt_len(uint8_t fooling, uint32_t *timestamps)
 {
@@ -106,7 +112,7 @@ void rawsend_cleanup()
 	rawsend_clean_sock(&rawsend_sock4);
 	rawsend_clean_sock(&rawsend_sock6);
 }
-static int *rawsend_family_sock(int family)
+static int *rawsend_family_sock(sa_family_t family)
 {
 	switch(family)
 	{
@@ -115,42 +121,189 @@ static int *rawsend_family_sock(int family)
 		default: return NULL;
 	}
 }
-static int rawsend_socket(int family,uint32_t fwmark)
+
+#ifdef BSD
+static int rawsend_socket_divert(sa_family_t family)
 {
+	// HACK HACK HACK HACK HACK HACK HACK HACK
+	// FreeBSD doesnt allow IP_HDRINCL for IPV6
+	// OpenBSD doesnt allow rawsending tcp frames
+	// we either have to go to the link layer (its hard, possible problems arise, compat testing, ...) or use some HACKING
+	// from my point of view disabling direct ability to send ip frames is not security. its SHIT
+
+	struct sockaddr_storage bp;
+	socklen_t slen;
+	uint16_t *pport;
+	int fd;
+
+	memset(&bp,0,sizeof(bp));
+	bp.ss_family = family;
+	switch(family)
+	{
+		case AF_INET:
+			pport = &((struct sockaddr_in*)&bp)->sin_port;
+			slen = sizeof(struct sockaddr_in);
+			break;
+		case AF_INET6:
+			pport = &((struct sockaddr_in6*)&bp)->sin6_port;
+			slen = sizeof(struct sockaddr_in6);
+			break;
+		default:
+			return -1;
+	}
+	fd = socket(family, SOCK_RAW, IPPROTO_DIVERT);
+	if (fd != -1)
+	{
+		// bind to any available port
+		for (uint16_t port=65535 ; port ; port--)
+		{
+			*pport = htons(port);
+			if (!bind(fd, (struct sockaddr*)&bp, slen))
+				return fd;
+			if (errno!=EADDRINUSE)
+			{
+				perror("bind divert socket :");
+				break;
+			}
+		}
+	}
+	close(fd);
+	return -1;
+}
+static int rawsend_sendto_divert(sa_family_t family, int sock, const void *buf, size_t len)
+{
+	struct sockaddr_storage sa;
+	socklen_t slen;
+
+	memset(&sa,0,sizeof(sa));
+	sa.ss_family = family;
+	switch(family)
+	{
+		case AF_INET:
+			slen = sizeof(struct sockaddr_in);
+			break;
+		case AF_INET6:
+			slen = sizeof(struct sockaddr_in6);
+			break;
+		default:
+			return -1;
+	}
+	return sendto(sock, buf, len, 0, (struct sockaddr*)&sa, slen);
+}
+#endif
+
+static int rawsend_socket(sa_family_t family,uint32_t fwmark)
+{
+	int yes=1;
 	int *sock = rawsend_family_sock(family);
 	if (!sock) return -1;
 	
 	if (*sock==-1)
 	{
-		int pri=6;
+		int yes=1,pri=6;
+		//printf("rawsend_socket: family %d",family);
+
+#ifdef __FreeBSD__
+		// IPPROTO_RAW with ipv6 in FreeBSD always returns EACCES on sendto.
+		// must use IPPROTO_TCP for ipv6. IPPROTO_RAW works for ipv4
+		// divert sockets are always v4 but accept both v4 and v6
+		*sock = (family==AF_INET) ? socket(family, SOCK_RAW, IPPROTO_TCP) : rawsend_socket_divert(AF_INET);
+#elif defined(__OpenBSD__)
+		// OpenBSD does not allow sending TCP frames through raw sockets
+		*sock = rawsend_socket_divert(family);
+#else
 		*sock = socket(family, SOCK_RAW, IPPROTO_RAW);
+#endif
 		if (*sock==-1)
+		{
 			perror("rawsend: socket()");
-		else if (setsockopt(*sock, SOL_SOCKET, SO_MARK, &fwmark, sizeof(fwmark)) == -1)
+			return -1;
+		}
+#ifdef BSD
+		// HDRINCL not supported for ipv6 in any BSD
+#ifndef __OpenBSD__
+		if (family==AF_INET && setsockopt(*sock,IPPROTO_IP,IP_HDRINCL,&yes,sizeof(yes)) == -1)
+		{
+			perror("rawsend: setsockopt(IP_HDRINCL)");
+			goto exiterr;
+		}
+#endif
+#ifdef SO_USER_COOKIE
+		if (setsockopt(*sock, SOL_SOCKET, SO_USER_COOKIE, &fwmark, sizeof(fwmark)) == -1)
 		{
 			perror("rawsend: setsockopt(SO_MARK)");
-			rawsend_clean_sock(sock);
+			goto exiterr;
 		}
-		else if (setsockopt(*sock, SOL_SOCKET, SO_PRIORITY, &pri, sizeof(pri)) == -1)
+#endif
+#endif
+#ifdef __linux__
+		if (setsockopt(*sock, SOL_SOCKET, SO_MARK, &fwmark, sizeof(fwmark)) == -1)
+		{
+			perror("rawsend: setsockopt(SO_MARK)");
+			goto exiterr;
+		}
+		if (setsockopt(*sock, SOL_SOCKET, SO_PRIORITY, &pri, sizeof(pri)) == -1)
 		{
 			perror("rawsend: setsockopt(SO_PRIORITY)");
-			rawsend_clean_sock(sock);
+			goto exiterr;
 		}
+#endif
 	}
 	return *sock;
+exiterr:
+	rawsend_clean_sock(sock);
+	return -1;
 }
-bool rawsend(struct sockaddr* dst,uint32_t fwmark,const void *data,size_t len)
+bool rawsend_preinit(uint32_t fwmark)
+{
+	return rawsend_socket(AF_INET,fwmark)!=-1 && rawsend_socket(AF_INET6,fwmark)!=-1;
+}
+bool rawsend(const struct sockaddr* dst,uint32_t fwmark,const void *data,size_t len)
 {
 	int sock=rawsend_socket(dst->sa_family,fwmark);
 	if (sock==-1) return false;
-
 	int salen = dst->sa_family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 	struct sockaddr_storage dst2;
 	memcpy(&dst2,dst,salen);
 	if (dst->sa_family==AF_INET6)
-		((struct sockaddr_in6 *)&dst2)->sin6_port = 0; // or will be EINVAL
+		((struct sockaddr_in6 *)&dst2)->sin6_port = 0; // or will be EINVAL in linux
+#ifdef BSD
+/*
+		// this works only for local connections and not working for transit : cant spoof source addr
+		if (len>=sizeof(struct ip6_hdr))
+		{
+			// BSD ipv6 raw socks are limited. cannot pass the whole packet with ip6 header.
+			struct sockaddr_storage sa_src;
+			int v;
+			extract_endpoints(NULL,(struct ip6_hdr *)data,NULL, &sa_src, NULL);
+			v = ((struct ip6_hdr *)data)->ip6_ctlun.ip6_un1.ip6_un1_hlim;
+			if (setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &v, sizeof(v)) == -1)
+				perror("rawsend: setsockopt(IPV6_HOPLIMIT)");
+			// the only way to control source address is bind. make it equal to ip6_hdr
+			if (bind(sock, (struct sockaddr*)&sa_src, salen) < 0)
+				perror("rawsend bind: ");
+			//printf("BSD v6 RAWSEND "); print_sockaddr((struct sockaddr*)&sa_src); printf(" -> "); print_sockaddr((struct sockaddr*)&dst2); printf("\n");
+			proto_skip_ipv6((uint8_t**)&data, &len, NULL);
+		}
+*/
 
-	int bytes = sendto(sock, data, len, 0, (struct sockaddr*)&dst2, salen);
+#ifndef __OpenBSD__
+	// OpenBSD doesnt allow rawsending tcp frames. always use divert socket
+	if (dst->sa_family==AF_INET6)
+#endif
+	{
+		ssize_t bytes = rawsend_sendto_divert(dst->sa_family,sock,data,len);
+		if (bytes==-1)
+		{
+			perror("rawsend: sendto_divert");
+			return false;
+		}
+		return true;
+	}
+#endif
+
+	// normal raw socket sendto
+	ssize_t bytes = sendto(sock, data, len, 0, (struct sockaddr*)&dst2, salen);
 	if (bytes==-1)
 	{
 		perror("rawsend: sendto");
@@ -170,31 +323,31 @@ bool prepare_tcp_segment4(
 	uint8_t *buf, size_t *buflen)
 {
 	uint16_t tcpoptlen = tcpopt_len(fooling,timestamps);
-	uint16_t pktlen = sizeof(struct iphdr) + sizeof(struct tcphdr) + tcpoptlen  + len;
+	uint16_t pktlen = sizeof(struct ip) + sizeof(struct tcphdr) + tcpoptlen  + len;
 	if (pktlen>*buflen)
 	{
 		fprintf(stderr,"prepare_tcp_segment : packet len cannot exceed %zu\n",*buflen);
 		return false;
 	}
 
-	struct iphdr *ip = (struct iphdr*) buf;
+	struct ip *ip = (struct ip*) buf;
 	struct tcphdr *tcp = (struct tcphdr*) (ip+1);
 
-	ip->frag_off = 0;
-	ip->version = 4;
-	ip->ihl = 5;
-	ip->tot_len = htons(pktlen);
-	ip->id = 0;
-	ip->ttl = ttl;
-	ip->protocol = IPPROTO_TCP;
-	ip->saddr = src->sin_addr.s_addr;
-	ip->daddr = dst->sin_addr.s_addr;
+	ip->ip_off = 0;
+	ip->ip_v = 4;
+	ip->ip_hl = 5;
+	ip->ip_len = htons(pktlen);
+	ip->ip_id = 0;
+	ip->ip_ttl = ttl;
+	ip->ip_p = IPPROTO_TCP;
+	ip->ip_src = src->sin_addr;
+	ip->ip_dst = dst->sin_addr;
 
 	fill_tcphdr(tcp,tcp_flags,seq,ack_seq,fooling,src->sin_port,dst->sin_port,wsize,timestamps);
 
 	memcpy((char*)tcp+sizeof(struct tcphdr)+tcpoptlen,data,len);
-	tcp4_fix_checksum(tcp,sizeof(struct tcphdr)+tcpoptlen+len,ip->saddr,ip->daddr);
-	if (fooling & TCP_FOOL_BADSUM) tcp->check^=0xBEAF;
+	tcp4_fix_checksum(tcp,sizeof(struct tcphdr)+tcpoptlen+len,&ip->ip_src,&ip->ip_dst);
+	if (fooling & TCP_FOOL_BADSUM) tcp->th_sum^=0xBEAF;
 
 	*buflen = pktlen;
 	return true;
@@ -235,7 +388,7 @@ bool prepare_tcp_segment6(
 
 	memcpy((char*)tcp+sizeof(struct tcphdr)+tcpoptlen,data,len);
 	tcp6_fix_checksum(tcp,sizeof(struct tcphdr)+tcpoptlen+len,&ip6->ip6_src,&ip6->ip6_dst);
-	if (fooling & TCP_FOOL_BADSUM) tcp->check^=0xBEAF;
+	if (fooling & TCP_FOOL_BADSUM) tcp->th_sum^=0xBEAF;
 
 	*buflen = pktlen;
 	return true;
@@ -260,35 +413,51 @@ bool prepare_tcp_segment(
 }
 
 
-void extract_endpoints(const struct iphdr *iphdr,const struct ip6_hdr *ip6hdr,const struct tcphdr *tcphdr, struct sockaddr_storage *src, struct sockaddr_storage *dst)
+void extract_endpoints(const struct ip *ip,const struct ip6_hdr *ip6hdr,const struct tcphdr *tcphdr, struct sockaddr_storage *src, struct sockaddr_storage *dst)
 {
-	if (iphdr)
+	if (ip)
 	{
-		struct sockaddr_in *si = (struct sockaddr_in*)dst;
-		si->sin_family = AF_INET;
-		si->sin_port = tcphdr ? tcphdr->dest : 0;
-		si->sin_addr.s_addr = iphdr->daddr;
+		struct sockaddr_in *si;
 
-		si = (struct sockaddr_in*)src;
-		si->sin_family = AF_INET;
-		si->sin_port = tcphdr ? tcphdr->source : 0;
-		si->sin_addr.s_addr = iphdr->saddr;
+		if (dst)
+		{
+			si = (struct sockaddr_in*)dst;
+			si->sin_family = AF_INET;
+			si->sin_port = tcphdr ? tcphdr->th_dport : 0;
+			si->sin_addr = ip->ip_dst;
+		}
+
+		if (src)
+		{
+			si = (struct sockaddr_in*)src;
+			si->sin_family = AF_INET;
+			si->sin_port = tcphdr ? tcphdr->th_sport : 0;
+			si->sin_addr = ip->ip_src;
+		}
 	}
 	else if (ip6hdr)
 	{
-		struct sockaddr_in6 *si = (struct sockaddr_in6*)dst;
-		si->sin6_family = AF_INET6;
-		si->sin6_port = tcphdr ? tcphdr->dest : 0;
-		si->sin6_addr = ip6hdr->ip6_dst;
-		si->sin6_flowinfo = 0;
-		si->sin6_scope_id = 0;
+		struct sockaddr_in6 *si;
 
-		si = (struct sockaddr_in6*)src;
-		si->sin6_family = AF_INET6;
-		si->sin6_port = tcphdr ? tcphdr->source : 0;
-		si->sin6_addr = ip6hdr->ip6_src;
-		si->sin6_flowinfo = 0;
-		si->sin6_scope_id = 0;
+		if (dst)
+		{
+			si = (struct sockaddr_in6*)dst;
+			si->sin6_family = AF_INET6;
+			si->sin6_port = tcphdr ? tcphdr->th_dport : 0;
+			si->sin6_addr = ip6hdr->ip6_dst;
+			si->sin6_flowinfo = 0;
+			si->sin6_scope_id = 0;
+		}
+
+		if (src)
+		{
+			si = (struct sockaddr_in6*)src;
+			si->sin6_family = AF_INET6;
+			si->sin6_port = tcphdr ? tcphdr->th_sport : 0;
+			si->sin6_addr = ip6hdr->ip6_src;
+			si->sin6_flowinfo = 0;
+			si->sin6_scope_id = 0;
+		}
 	}
 }
 
@@ -310,8 +479,10 @@ static const char *proto_name(uint8_t proto)
 			return "ah";
 		case IPPROTO_IPV6:
 			return "6in4";
+#ifdef IPPROTO_SCTP
 		case IPPROTO_SCTP:
 			return "sctp";
+#endif
 		default:
 			return NULL;
 	}
@@ -333,17 +504,17 @@ static void str_srcdst_ip(char *s, size_t s_len, const void *saddr,const void *d
 	inet_ntop(AF_INET, daddr, d_ip, sizeof(d_ip));
 	snprintf(s,s_len,"%s => %s",s_ip,d_ip);
 }
-static void str_iphdr(char *s, size_t s_len, const struct iphdr *iphdr)
+static void str_ip(char *s, size_t s_len, const struct ip *ip)
 {
 	char ss[64],s_proto[16];
-	str_srcdst_ip(ss,sizeof(ss),&iphdr->saddr,&iphdr->daddr);
-	str_proto_name(s_proto,sizeof(s_proto),iphdr->protocol);
+	str_srcdst_ip(ss,sizeof(ss),&ip->ip_src,&ip->ip_dst);
+	str_proto_name(s_proto,sizeof(s_proto),ip->ip_p);
 	snprintf(s,s_len,"%s proto=%s",ss,s_proto);
 }
-void print_iphdr(const struct iphdr *iphdr)
+void print_ip(const struct ip *ip)
 {
 	char s[64];
-	str_iphdr(s,sizeof(s),iphdr);
+	str_ip(s,sizeof(s),ip);
 	printf("%s",s);
 }
 static void str_srcdst_ip6(char *s, size_t s_len, const void *saddr,const void *daddr)
@@ -371,18 +542,107 @@ void print_ip6hdr(const struct ip6_hdr *ip6hdr, uint8_t proto)
 static void str_tcphdr(char *s, size_t s_len, const struct tcphdr *tcphdr)
 {
 	char flags[7],*f=flags;
-	if (tcphdr->syn) *f++='S';
-	if (tcphdr->ack) *f++='A';
-	if (tcphdr->rst) *f++='R';
-	if (tcphdr->fin) *f++='F';
-	if (tcphdr->psh) *f++='P';
-	if (tcphdr->urg) *f++='U';
+	if (tcphdr->th_flags & TH_SYN) *f++='S';
+	if (tcphdr->th_flags & TH_ACK) *f++='A';
+	if (tcphdr->th_flags & TH_RST) *f++='R';
+	if (tcphdr->th_flags & TH_FIN) *f++='F';
+	if (tcphdr->th_flags & TH_PUSH) *f++='P';
+	if (tcphdr->th_flags & TH_URG) *f++='U';
 	*f=0;
-	snprintf(s,s_len,"sport=%u dport=%u flags=%s seq=%u ack_seq=%u",htons(tcphdr->source),htons(tcphdr->dest),flags,htonl(tcphdr->seq),htonl(tcphdr->ack_seq));
+	snprintf(s,s_len,"sport=%u dport=%u flags=%s seq=%u ack_seq=%u",htons(tcphdr->th_sport),htons(tcphdr->th_dport),flags,htonl(tcphdr->th_seq),htonl(tcphdr->th_ack));
 }
 void print_tcphdr(const struct tcphdr *tcphdr)
 {
 	char s[80];
 	str_tcphdr(s,sizeof(s),tcphdr);
 	printf("%s",s);
+}
+
+
+
+
+bool proto_check_ipv4(uint8_t *data, size_t len)
+{
+	return 	len >= 20 && (data[0] & 0xF0) == 0x40 &&
+		len >= ((data[0] & 0x0F) << 2);
+}
+// move to transport protocol
+void proto_skip_ipv4(uint8_t **data, size_t *len)
+{
+	size_t l;
+
+	l = (**data & 0x0F) << 2;
+	*data += l;
+	*len -= l;
+}
+bool proto_check_tcp(uint8_t *data, size_t len)
+{
+	return	len >= 20 && len >= ((data[12] & 0xF0) >> 2);
+}
+void proto_skip_tcp(uint8_t **data, size_t *len)
+{
+	size_t l;
+	l = ((*data)[12] & 0xF0) >> 2;
+	*data += l;
+	*len -= l;
+}
+
+bool proto_check_ipv6(uint8_t *data, size_t len)
+{
+	return 	len >= 40 && (data[0] & 0xF0) == 0x60 &&
+		(len - 40) >= htons(*(uint16_t*)(data + 4)); // payload length
+}
+// move to transport protocol
+// proto_type = 0 => error
+void proto_skip_ipv6(uint8_t **data, size_t *len, uint8_t *proto_type)
+{
+	size_t hdrlen;
+	uint8_t HeaderType;
+
+	if (proto_type) *proto_type = 0; // put error in advance
+
+	HeaderType = (*data)[6]; // NextHeader field
+	*data += 40; *len -= 40; // skip ipv6 base header
+	while (*len > 0) // need at least one byte for NextHeader field
+	{
+		switch (HeaderType)
+		{
+		case 0: // Hop-by-Hop Options
+		case 43: // routing
+		case 51: // authentication
+		case 60: // Destination Options
+		case 135: // mobility
+		case 139: // Host Identity Protocol Version v2
+		case 140: // Shim6
+			if (*len < 2) return; // error
+			hdrlen = 8 + ((*data)[1] << 3);
+			break;
+		case 44: // fragment. length fixed to 8, hdrlen field defined as reserved
+			hdrlen = 8;
+			break;
+		case 59: // no next header
+			return; // error
+		default:
+			// we found some meaningful payload. it can be tcp, udp, icmp or some another exotic shit
+			if (proto_type) *proto_type = HeaderType;
+			return;
+		}
+		if (*len < hdrlen) return; // error
+		HeaderType = **data;
+		// advance to the next header location
+		*len -= hdrlen;
+		*data += hdrlen;
+	}
+	// we have garbage
+}
+
+bool tcp_synack_segment(const struct tcphdr *tcphdr)
+{
+	/* check for set bits in TCP hdr */
+	return  (tcphdr->th_flags & TH_URG) == 0 &&
+		(tcphdr->th_flags & TH_ACK) == 1 &&
+		(tcphdr->th_flags & TH_PUSH) == 0 &&
+		(tcphdr->th_flags & TH_RST) == 0 &&
+		(tcphdr->th_flags & TH_SYN) == 1 &&
+		(tcphdr->th_flags & TH_FIN) == 0;
 }
