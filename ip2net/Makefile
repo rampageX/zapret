@@ -4,6 +4,7 @@ LIBS =
 SRC_FILES = *.c
 
 all: ip2net
+bsd: all
 
 ip2net: $(SRC_FILES)
 	$(CC) $(CFLAGS) -o $@ $(SRC_FILES) $(LDFLAGS) $(LIBS)
