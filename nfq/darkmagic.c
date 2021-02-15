@@ -639,10 +639,10 @@ void proto_skip_ipv6(uint8_t **data, size_t *len, uint8_t *proto_type)
 bool tcp_synack_segment(const struct tcphdr *tcphdr)
 {
 	/* check for set bits in TCP hdr */
-	return  (tcphdr->th_flags & TH_URG) == 0 &&
-		(tcphdr->th_flags & TH_ACK) == 1 &&
-		(tcphdr->th_flags & TH_PUSH) == 0 &&
-		(tcphdr->th_flags & TH_RST) == 0 &&
-		(tcphdr->th_flags & TH_SYN) == 1 &&
-		(tcphdr->th_flags & TH_FIN) == 0;
+	return  !(tcphdr->th_flags & TH_URG) &&
+		(tcphdr->th_flags & TH_ACK) &&
+		!(tcphdr->th_flags & TH_PUSH) &&
+		!(tcphdr->th_flags & TH_RST)  &&
+		(tcphdr->th_flags & TH_SYN) &&
+		!(tcphdr->th_flags & TH_FIN);
 }
