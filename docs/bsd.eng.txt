@@ -29,12 +29,12 @@ ipfw table is analog to linux ipset. Unlike ipsets ipfw tables share v4 an v6 ad
 If ipfw is absent scripts only create lists but do not load them.
 
 PF can load ip tables from a file. To use this feature with ipset/*.sh scripts disable gzip file creation
-using "GZIP=LISTS=0" directive in the /opt/zapret/config file.
+using "GZIP_LISTS=0" directive in the /opt/zapret/config file.
 
 BSD kernel doesn't implement splice syscall. tpws uses regular recv/send operations with data copying to user space.
 Its slower but not critical.
 tpws uses nonblocking sockets with linux specific epoll feature.
-In BSD its emulated in the epoll-shim library. It uses kqueue.
+In BSD systems epoll is emulated by epoll-shim library on top of kqueue.
 
 tpws uses only documented APIs but dvtws also uses some HACKs, assumptions and knowledge of discovered bugs and limitations.
 BSD systems have many unlogical limitations, version specific features and bugs in low level networking, especially for ipv6.
@@ -103,7 +103,7 @@ OpenBSD
 -------
 
 In OpenBSD default tpws bind is ipv6 only. to bind to ipv4 specify --bind-addr=0.0.0.0
-Use --bind-addr=0.0.0.0 --bind-addr=::  to achieve the same bind as in others OSes.
+Use --bind-addr=0.0.0.0 --bind-addr=::  to achieve the same default bind as in others OSes.
 
 tpws for forwarded traffic only :
 
