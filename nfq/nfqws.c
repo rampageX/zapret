@@ -531,6 +531,8 @@ int main(int argc, char **argv)
 		{"qnum",required_argument,0,0},		// optidx=1
 #elif defined(BSD)
 		{"port",required_argument,0,0},		// optidx=1
+#else
+		{"disabled_argument_1",no_argument,0,0},// optidx=1
 #endif
 		{"daemon",no_argument,0,0},		// optidx=2
 		{"pidfile",required_argument,0,0},	// optidx=3
