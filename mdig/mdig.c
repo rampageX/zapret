@@ -62,6 +62,20 @@ static const char* eai_str(int r)
 	}
 }
 
+bool dom_valid(char *dom)
+{
+	for (; *dom; dom++)
+		if (*dom < 0x20 || *dom>0x7F || !(*dom == '.' || *dom == '-' || *dom == '_' || *dom >= '0' && *dom <= '9' || *dom >= 'a' && *dom <= 'z' || *dom >= 'A' && *dom <= 'Z'))
+			return false;
+	return true;
+}
+void invalid_domain_beautify(char *dom)
+{
+	for (int i = 0; *dom && i < 64; i++, dom++)
+		if (*dom < 0x20 || *dom>0x7F) *dom = '?';
+	if (*dom) *dom = 0;
+}
+
 #define FAMILY4 1
 #define FAMILY6 2
 static struct
@@ -71,7 +85,7 @@ static struct
 	int threads;
 	pthread_mutex_t flock;
 	pthread_mutex_t slock; // stats lock
-	int stats_every,stats_ct,stats_ct_ok; // stats
+	int stats_every, stats_ct, stats_ct_ok; // stats
 } glob;
 
 // get next domain. return 0 if failure
@@ -121,20 +135,20 @@ static void print_addrinfo(struct addrinfo *ai)
 static void stat_print(int ct, int ct_ok)
 {
 	if (glob.stats_every > 0)
-		interlocked_fprintf(stderr, "mdig stats : domains=%d success=%d error=%d\n", ct, ct_ok, ct-ct_ok);
+		interlocked_fprintf(stderr, "mdig stats : domains=%d success=%d error=%d\n", ct, ct_ok, ct - ct_ok);
 }
 
 static void stat_plus(char is_ok)
 {
-	int ct,ct_ok;
+	int ct, ct_ok;
 	if (glob.stats_every > 0)
 	{
 		pthread_mutex_lock(&glob.slock);
 		ct = ++glob.stats_ct;
-		ct_ok = glob.stats_ct_ok+=!!is_ok;
+		ct_ok = glob.stats_ct_ok += !!is_ok;
 		pthread_mutex_unlock(&glob.slock);
 
-		if (!(ct % glob.stats_every)) stat_print(ct,ct_ok);
+		if (!(ct % glob.stats_every)) stat_print(ct, ct_ok);
 	}
 }
 
@@ -153,8 +167,8 @@ static uint16_t GetAddrFamily(const char *saddr)
 static void *t_resolver(void *arg)
 {
 	int tid = (int)(size_t)arg;
-	int i,r;
-	char dom[256],is_ok;
+	int i, r;
+	char dom[256], is_ok;
 	struct addrinfo hints;
 	struct addrinfo *result;
 
@@ -168,29 +182,28 @@ static void *t_resolver(void *arg)
 	{
 		if (*dom)
 		{
+			is_ok = 0;
 			uint16_t family;
-			char *s_mask,s_ip[sizeof(dom)];
+			char *s_mask, s_ip[sizeof(dom)];
 
-			is_ok=0;
-
-			strncpy(s_ip,dom,sizeof(s_ip));
-			s_mask=strchr(s_ip,'/');
-			if (s_mask) *s_mask++=0;
-			family=GetAddrFamily(s_ip);
+			strncpy(s_ip, dom, sizeof(s_ip));
+			s_mask = strchr(s_ip, '/');
+			if (s_mask) *s_mask++ = 0;
+			family = GetAddrFamily(s_ip);
 			if (family)
 			{
-				if (family==AF_INET && (glob.family & FAMILY4) || family==AF_INET6 && (glob.family & FAMILY6))
+				if (family == AF_INET && (glob.family & FAMILY4) || family == AF_INET6 && (glob.family & FAMILY6))
 				{
 					unsigned int mask;
-					bool mask_needed=false;
+					bool mask_needed = false;
 					if (s_mask)
 					{
-						if (sscanf(s_mask,"%u",&mask))
+						if (sscanf(s_mask, "%u", &mask))
 						{
-							switch(family)
+							switch (family)
 							{
-								case AF_INET: is_ok=mask<=32; mask_needed=mask<32; break;
-								case AF_INET6: is_ok=mask<=128; mask_needed=mask<128; break;
+							case AF_INET: is_ok = mask <= 32; mask_needed = mask < 32; break;
+							case AF_INET6: is_ok = mask <= 128; mask_needed = mask < 128; break;
 							}
 						}
 					}
@@ -202,9 +215,9 @@ static void *t_resolver(void *arg)
 						VLOG("bad ip/subnet %s", dom);
 				}
 				else
-						VLOG("wrong address family %s", s_ip);
+					VLOG("wrong address family %s", s_ip);
 			}
-			else
+			else if (dom_valid(dom))
 			{
 				VLOG("resolving %s", dom);
 				for (i = 0; i < RESOLVER_EAGAIN_ATTEMPTS; i++)
@@ -218,13 +231,18 @@ static void *t_resolver(void *arg)
 					{
 						print_addrinfo(result);
 						freeaddrinfo(result);
-						is_ok=1;
+						is_ok = 1;
 					}
 					break;
 				}
 			}
-			stat_plus(is_ok);
+			else
+			{
+				invalid_domain_beautify(dom);
+				VLOG("invalid domain : %s", dom);
+			}
 		}
+		stat_plus(is_ok);
 	}
 	VLOG("ended");
 	return NULL;
@@ -235,7 +253,7 @@ static int run_threads()
 	int i, thread;
 	pthread_t *t;
 
-	glob.stats_ct=glob.stats_ct_ok=0;
+	glob.stats_ct = glob.stats_ct_ok = 0;
 	if (pthread_mutex_init(&glob.flock, NULL) != 0)
 	{
 		fprintf(stderr, "mutex init failed\n");
@@ -268,7 +286,7 @@ static int run_threads()
 		pthread_join(t[i], NULL);
 	}
 	free(t);
-	stat_print(glob.stats_ct,glob.stats_ct_ok);
+	stat_print(glob.stats_ct, glob.stats_ct_ok);
 	pthread_mutex_destroy(&glob.slock);
 	pthread_mutex_destroy(&glob.flock);
 	return thread ? 0 : 12;
