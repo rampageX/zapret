@@ -69,27 +69,36 @@ bool dropcaps()
 	return true;
 }
 #endif
+
+bool can_drop_root()
+{
+#ifdef __linux__
+	// has some caps
+	return checkpcap((1<<CAP_SETUID)|(1<<CAP_SETGID)|(1<<CAP_SETPCAP));
+#else
+	// effective root
+	return !geteuid();
+#endif
+}
+
 bool droproot(uid_t uid, gid_t gid)
 {
-	if (uid || gid)
-	{
 #ifdef __linux__
-		if (prctl(PR_SET_KEEPCAPS, 1L))
-		{
-			perror("prctl(PR_SET_KEEPCAPS): ");
-			return false;
-		}
+	if (prctl(PR_SET_KEEPCAPS, 1L))
+	{
+		perror("prctl(PR_SET_KEEPCAPS): ");
+		return false;
+	}
 #endif
-		if (setgid(gid))
-		{
-			perror("setgid: ");
-			return false;
-		}
-		if (setuid(uid))
-		{
-			perror("setuid: ");
-			return false;
-		}
+	if (setgid(gid))
+	{
+		perror("setgid: ");
+		return false;
+	}
+	if (setuid(uid))
+	{
+		perror("setuid: ");
+		return false;
 	}
 #ifdef __linux__
 	return dropcaps();

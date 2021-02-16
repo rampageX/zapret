@@ -216,46 +216,47 @@ static int nfq_main()
 	printf("opening library handle\n");
 	h = nfq_open();
 	if (!h) {
-		fprintf(stderr, "error during nfq_open()\n");
+		perror("nfq_open() :");
 		goto exiterr;
 	}
 
 	printf("unbinding existing nf_queue handler for AF_INET (if any)\n");
 	if (nfq_unbind_pf(h, AF_INET) < 0) {
-		fprintf(stderr, "error during nfq_unbind_pf()\n");
+		perror("nfq_unbind_pf() :");
 		goto exiterr;
 	}
 
 	printf("binding nfnetlink_queue as nf_queue handler for AF_INET\n");
 	if (nfq_bind_pf(h, AF_INET) < 0) {
-		fprintf(stderr, "error during nfq_bind_pf()\n");
+		perror("nfq_bind_pf() :");
 		goto exiterr;
 	}
 
 	printf("binding this socket to queue '%u'\n", params.qnum);
 	qh = nfq_create_queue(h, params.qnum, &nfq_cb, &params);
 	if (!qh) {
-		fprintf(stderr, "error during nfq_create_queue()\n");
+		perror("nfq_create_queue() :");
 		goto exiterr;
 	}
 
 	printf("setting copy_packet mode\n");
 	if (nfq_set_mode(qh, NFQNL_COPY_PACKET, 0xffff) < 0) {
-		fprintf(stderr, "can't set packet_copy mode\n");
+		perror("can't set packet_copy mode :");
 		goto exiterr;
 	}
 	if (nfq_set_queue_maxlen(qh, Q_MAXLEN) < 0) {
-		fprintf(stderr, "can't set queue maxlen\n");
+		perror("can't set queue maxlen : ");
 		goto exiterr;
 	}
 	// accept packets if they cant be handled
 	if (nfq_set_queue_flags(qh, NFQA_CFG_F_FAIL_OPEN , NFQA_CFG_F_FAIL_OPEN))
 	{
-		fprintf(stderr, "can't set queue flags. errno=%d\n", errno);
+		fprintf(stderr, "can't set queue flags. its OK on linux <3.6\n");
 		// dot not fail. not supported on old linuxes <3.6 
 	}
 
-	if (!droproot(params.uid, params.gid)) goto exiterr;
+	if (params.droproot && !droproot(params.uid, params.gid))
+		goto exiterr;
 	printf("Running as UID=%u GID=%u\n", getuid(), getgid());
 
 	signal(SIGHUP, onhup);
@@ -370,7 +371,8 @@ static int dvt_main()
 	if (!rawsend_preinit(params.desync_fwmark))
 		goto exiterr;
 
-	if (!droproot(params.uid, params.gid)) goto exiterr;
+	if (params.droproot && !droproot(params.uid, params.gid))
+		goto exiterr;
 	printf("Running as UID=%u GID=%u\n", getuid(), getgid());
 
 	signal(SIGHUP, onhup);
@@ -525,7 +527,11 @@ int main(int argc, char **argv)
 	memcpy(params.fake_tls,fake_tls_clienthello_default,params.fake_tls_size);
 	params.fake_http_size = strlen(fake_http_request_default);
 	memcpy(params.fake_http,fake_http_request_default,params.fake_http_size);
-	params.uid = params.gid = 0x7FFFFFFF; // default uid:gid
+	if (can_drop_root()) // are we root ?
+	{
+		params.uid = params.gid = 0x7FFFFFFF; // default uid:gid
+		params.droproot = true;
+	}
 
 	const struct option long_options[] = {
 		{"debug",optional_argument,0,0},	// optidx=0
@@ -611,10 +617,12 @@ int main(int argc, char **argv)
 			}
 			params.uid = pwd->pw_uid;
 			params.gid = pwd->pw_gid;
+			params.droproot = true;
 			break;
 		}
 		case 5: /* uid */
 			params.gid = 0x7FFFFFFF; // default gid. drop gid=0
+			params.droproot = true;
 			if (!sscanf(optarg, "%u:%u", &params.uid, &params.gid))
 			{
 				fprintf(stderr, "--uid should be : uid[:gid]\n");

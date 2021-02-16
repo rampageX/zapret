@@ -13,6 +13,7 @@ int getmaxcap();
 bool dropcaps();
 #endif
 
+bool can_drop_root();
 bool droproot(uid_t uid, gid_t gid);
 void daemonize();
 bool writepid(const char *filename);

@@ -198,7 +198,11 @@ void parse_params(int argc, char *argv[])
 	params.maxconn = DEFAULT_MAX_CONN;
 	params.max_orphan_time = DEFAULT_MAX_ORPHAN_TIME;
 	params.binds_last = -1;
-	params.uid = params.gid = 0x7FFFFFFF; // default uid:gid
+	if (can_drop_root())
+	{
+	    params.uid = params.gid = 0x7FFFFFFF; // default uid:gid
+	    params.droproot = true;
+	}
 
 	const struct option long_options[] = {
 		{ "help",no_argument,0,0 },// optidx=0
@@ -321,10 +325,12 @@ void parse_params(int argc, char *argv[])
 			}
 			params.uid = pwd->pw_uid;
 			params.gid = pwd->pw_gid;
+			params.droproot = true;
 			break;
 		}
 		case 12: /* uid */
 			params.gid=0x7FFFFFFF; // default git. drop gid=0
+			params.droproot = true;
 			if (!sscanf(optarg,"%u:%u",&params.uid,&params.gid))
 			{
 				fprintf(stderr, "--uid should be : uid[:gid]\n");
@@ -824,10 +830,8 @@ int main(int argc, char *argv[])
 
 	set_ulimit();
 
-	if (!droproot(params.uid,params.gid))
-	{
+	if (params.droproot && !droproot(params.uid,params.gid))
 		goto exiterr;
-	}
 
 	printf("Running as UID=%u GID=%u\n",getuid(),getgid());
 

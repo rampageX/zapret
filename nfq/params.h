@@ -44,6 +44,7 @@ struct params_s
 	strpool *hostlist;
 	uint8_t fake_http[1460],fake_tls[1460];
 	size_t fake_http_size,fake_tls_size;
+	bool droproot;
 	uid_t uid;
 	gid_t gid;
 };
