@@ -125,7 +125,7 @@ pass out quick on em0 proto tcp to port {80,443} divert-packet port 989
 pfctl -f /etc/pf.conf
 ./dvtws --port=989 --dpi-desync=split2
 
-dwtwws only for table zapret with the exception of table nozapret :
+dwtws only for table zapret with the exception of table nozapret :
 
 /etc/pf.conf
 ------------
