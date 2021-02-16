@@ -15,10 +15,11 @@ dig_reestr()
 {
  # $1 - grep ipmask
  # $2 - iplist
+ # $3 - ip version : 4,6
 
  echo processing reestr list $2
 
- tail -n +2 "$ZREESTR" | grep -oE "$1" | cut_local | sort -u | zz "$2"
+ tail -n +2 "$ZREESTR" | grep -oE "$1" | cut_local | ip2net$3 | zz "$2"
 }
 
 
@@ -36,11 +37,11 @@ fi
 #sed -i 's/\\n/\r\n/g' $ZREESTR
 
 [ "$DISABLE_IPV4" != "1" ] && {
- dig_reestr '[1-9][0-9]{0,2}\.([0-9]{1,3}\.){2}[0-9]{1,3}(/[0-9]+)?' "$ZIPLIST"
+ dig_reestr '[1-9][0-9]{0,2}\.([0-9]{1,3}\.){2}[0-9]{1,3}(/[0-9]+)?' "$ZIPLIST" 4
 }
 
 [ "$DISABLE_IPV6" != "1" ] && {
- dig_reestr '[0-9,a-f,A-F]{1,4}:[0-9,a-f,A-F,:]+[0-9,a-f,A-F]{1,4}(/[0-9]+)?' "$ZIPLIST6"
+ dig_reestr '[0-9,a-f,A-F]{1,4}:[0-9,a-f,A-F,:]+[0-9,a-f,A-F]{1,4}(/[0-9]+)?' "$ZIPLIST6" 6
 }
 
 rm -f "$ZREESTR"

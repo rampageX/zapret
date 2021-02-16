@@ -16,6 +16,7 @@ dig_reestr()
  # $1 - grep ipmask
  # $2 - iplist
  # $3 - ipban list
+ # $4 - ip version : 4,6
 
  local DOMMASK='^.*;[^ ;:/]+\.[^ ;:/]+;'
  local TMP="$TMPDIR/tmp.txt"
@@ -27,10 +28,10 @@ dig_reestr()
  (grep -avE "$DOMMASK" "$ZREESTR" ; grep -a "https://" "$ZREESTR") |
   grep -oE "$1" | cut_local | sort -u >$TMP
 
- cat "$TMP" | zz "$3"
+ ip2net$4 <"$TMP" | zz "$3" 
 
  # other IPs go to regular zapret list
- tail -n +2 "$ZREESTR"  | grep -oE "$1" | cut_local | grep -xvFf "$TMP" | sort -u | zz "$2"
+ tail -n +2 "$ZREESTR"  | grep -oE "$1" | cut_local | grep -xvFf "$TMP" | ip2net$4 | zz "$2"
 
  rm -f "$TMP"
 }
@@ -49,11 +50,11 @@ fi
 #sed -i 's/\\n/\r\n/g' $ZREESTR
 
 [ "$DISABLE_IPV4" != "1" ] && {
- dig_reestr '[1-9][0-9]{0,2}\.([0-9]{1,3}\.){2}[0-9]{1,3}(/[0-9]+)?' "$ZIPLIST" "$ZIPLIST_IPBAN"
+ dig_reestr '[1-9][0-9]{0,2}\.([0-9]{1,3}\.){2}[0-9]{1,3}(/[0-9]+)?' "$ZIPLIST" "$ZIPLIST_IPBAN" 4
 }
 
 [ "$DISABLE_IPV6" != "1" ] && {
- dig_reestr '[0-9,a-f,A-F]{1,4}:[0-9,a-f,A-F,:]+[0-9,a-f,A-F]{1,4}(/[0-9]+)?' "$ZIPLIST6" "$ZIPLIST_IPBAN6"
+ dig_reestr '[0-9,a-f,A-F]{1,4}:[0-9,a-f,A-F,:]+[0-9,a-f,A-F]{1,4}(/[0-9]+)?' "$ZIPLIST6" "$ZIPLIST_IPBAN6" 6
 }
 
 rm -f "$ZREESTR"

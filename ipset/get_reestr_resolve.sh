@@ -21,6 +21,7 @@ curl -k --fail --max-time 600 --connect-timeout 5 --retry 3 --max-filesize 25165
  echo reestr list download failed   
  exit 2
 }
+
 dlsize=$(wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
 if test $dlsize -lt 204800; then
  echo list file is too small. can be bad.
@@ -39,7 +40,7 @@ echo digging started. this can take long ...
   rm -f "$ZDIG"
   exit 1
  }
- sort -u "$ZIPLISTTMP" | zz "$ZIPLIST"
+ ip2net4 <"$ZIPLISTTMP" | zz "$ZIPLIST"
  rm -f "$ZIPLISTTMP"
 }
 [ "$DISABLE_IPV6" != "1" ] && {
@@ -47,7 +48,7 @@ echo digging started. this can take long ...
   rm -f "$ZDIG"
   exit 1
  }
- sort -u "$ZIPLISTTMP" | zz "$ZIPLIST6"
+ ip2net6 <"$ZIPLISTTMP" | zz "$ZIPLIST6"
  rm -f "$ZIPLISTTMP"
 }
 rm -f "$ZDIG"

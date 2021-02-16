@@ -3,6 +3,15 @@
 [ -z "$TMPDIR" ] && TMPDIR=/tmp
 [ -z "$GZIP_LISTS" ] && GZIP_LISTS=1
 
+[ -z "$IPSET_OPT" ] && IPSET_OPT="hashsize 262144 maxelem 2097152"
+[ -z "$IPSET_OPT_EXCLUDE" ] && IPSET_OPT_EXCLUDE="hashsize 1024 maxelem 65536"
+
+[ -z "$IPFW_TABLE_OPT" ] && IPFW_TABLE_OPT="algo addr:radix"
+[ -z "$IPFW_TABLE_OPT_EXCLUDE" ] && IPFW_TABLE_OPT_EXCLUDE="algo addr:radix"
+
+IP2NET="$EXEDIR/../ip2net/ip2net"
+
+
 ZIPSET=zapret
 ZIPSET6=zapret6
 ZIPSET_EXCLUDE=nozapret
@@ -28,6 +37,24 @@ ZUSERLIST_EXCLUDE="$EXEDIR/zapret-hosts-user-exclude.txt"
 
 MDIG="$EXEDIR/../mdig/mdig"
 [ -z "$MDIG_THREADS" ] && MDIG_THREADS=30
+
+
+ip2net4()
+{
+ if [ -x "$IP2NET" ]; then
+  "$IP2NET" -4 $IP2NET_OPT4
+ else
+  sort -u
+ fi
+}
+ip2net6()
+{
+ if [ -x "$IP2NET" ]; then
+  "$IP2NET" -6 $IP2NET_OPT6
+ else
+  sort -u
+ fi
+}
 
 zzexist()
 {

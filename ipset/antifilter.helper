@@ -12,7 +12,7 @@ get_antifilter()
     echo list file is too small. can be bad.
     exit 2
    fi
-   cat "$ZIPLISTTMP" | zz "$2"
+   ip2net4 <"$ZIPLISTTMP" | zz "$2"
    rm -f "$ZIPLISTTMP"
   }
  }

@@ -6,14 +6,6 @@
 SCRIPT=$(readlink -f "$0")
 EXEDIR=$(dirname "$SCRIPT")
 
-[ -z "$IPSET_OPT" ] && IPSET_OPT="hashsize 262144 maxelem 2097152"
-[ -z "$IPSET_OPT_EXCLUDE" ] && IPSET_OPT_EXCLUDE="hashsize 1024 maxelem 65536"
-
-[ -z "$IPFW_TABLE_OPT" ] && IPFW_TABLE_OPT="algo addr:radix"
-[ -z "$IPFW_TABLE_OPT_EXCLUDE" ] && IPFW_TABLE_OPT_EXCLUDE="algo addr:radix"
-
-IP2NET="$EXEDIR/../ip2net/ip2net"
-
 . "$EXEDIR/def.sh"
 IPSET_CMD="$TMPDIR/ipset_cmd.txt"
 IPSET_SAVERAM_CHUNK_SIZE=20000
@@ -52,26 +44,11 @@ ipset_restore_chunked()
 }
 
 
-sortu()
-{
- sort -u
-}
-ip2net4()
-{
- "$IP2NET" -4 $IP2NET_OPT4
-}
-ip2net6()
-{
- "$IP2NET" -6 $IP2NET_OPT6
-}
 ipset_get_script()
 {
  # $1 - filename
  # $2 - ipset name
- # $3 - "6" = ipv6
- local filter=sortu
- [ -x "$IP2NET" ] && filter=ip2net$3
- zzcat "$1" | $filter | sed -nre "s/^.+$/add $2 &/p"
+ zzcat "$1" | sort -u | sed -nre "s/^.+$/add $2 &/p"
 }
 
 ipset_restore()
@@ -86,34 +63,32 @@ ipset_restore()
  [ "$SAVERAM" = "1" ] && [ "$fsize" -ge "$IPSET_SAVERAM_MIN_FILESIZE" ] && svram=1
 
  local T="Adding to ipset $2 ($IPSTYPE"
- [ -x "$IP2NET" ] && T="$T, ip2net"
  [ "$svram" = "1" ] && T="$T, saveram"
  T="$T) : $f"
  echo $T
 
  if [ "$svram" = "1" ]; then
-  ipset_get_script "$1" "$2" "$3" >"$IPSET_CMD"
+  ipset_get_script "$1" "$2" >"$IPSET_CMD"
   ipset_restore_chunked "$IPSET_CMD" $IPSET_SAVERAM_CHUNK_SIZE
   rm -f "$IPSET_CMD"
  else
-  ipset_get_script "$1" "$2" "$3" | ipset -! restore
+  ipset_get_script "$1" "$2" | ipset -! restore
  fi
 }
 
 create_ipset()
 {
- local IPSTYPE
- if [ -x "$IP2NET" ]; then
-  IPSTYPE=hash:net
- else
-  IPSTYPE=$3
- fi
+ # $1 - ip version : 4,6
+ # $2 - name
+ # $3 - type
+ # $4 - options
+ # $5,$6 - ip lists
  if [ "$1" -eq "6" ]; then
   FAMILY=inet6
  else
   FAMILY=inet
  fi
- ipset create $2 $IPSTYPE $4 family $FAMILY 2>/dev/null || {
+ ipset create $2 $3 $4 family $FAMILY 2>/dev/null || {
   [ "$NO_UPDATE" = "1" ] && return
  }
  ipset flush $2
@@ -136,12 +111,7 @@ populate_ipfw_table()
  # $1 - table name
  # $2 - ip list file
  zzexist "$2" || return
- if [ -x "$IP2NET" ]; then
-  zzcat "$2" | ip2net4 | add_ipfw_table $1
-  zzcat "$2" | ip2net6 | add_ipfw_table $1
- else
-  zzcat "$2" | sort -u | add_ipfw_table $1
- fi
+ zzcat "$2" | sort -u | add_ipfw_table $1
 }
 create_ipfw_table()
 {
@@ -177,13 +147,13 @@ if ipset_present; then
   [ "$RAMSIZE" -lt "110000" ] && SAVERAM=1
  }
  [ "$DISABLE_IPV4" != "1" ] && {
-   create_ipset 4 $ZIPSET hash:ip "$IPSET_OPT" "$ZIPLIST" "$ZIPLIST_USER"
-   create_ipset 4 $ZIPSET_IPBAN hash:ip "$IPSET_OPT" "$ZIPLIST_IPBAN" "$ZIPLIST_USER_IPBAN"
+   create_ipset 4 $ZIPSET hash:net "$IPSET_OPT" "$ZIPLIST" "$ZIPLIST_USER"
+   create_ipset 4 $ZIPSET_IPBAN hash:net "$IPSET_OPT" "$ZIPLIST_IPBAN" "$ZIPLIST_USER_IPBAN"
    create_ipset 4 $ZIPSET_EXCLUDE hash:net "$IPSET_OPT_EXCLUDE" "$ZIPLIST_EXCLUDE"
  }
  [ "$DISABLE_IPV6" != "1" ] && {
-   create_ipset 6 $ZIPSET6 hash:ip "$IPSET_OPT" "$ZIPLIST6" "$ZIPLIST_USER6"
-   create_ipset 6 $ZIPSET_IPBAN6 hash:ip "$IPSET_OPT" "$ZIPLIST_IPBAN6" "$ZIPLIST_USER_IPBAN6"
+   create_ipset 6 $ZIPSET6 hash:net "$IPSET_OPT" "$ZIPLIST6" "$ZIPLIST_USER6"
+   create_ipset 6 $ZIPSET_IPBAN6 hash:net "$IPSET_OPT" "$ZIPLIST_IPBAN6" "$ZIPLIST_USER_IPBAN6"
    create_ipset 6 $ZIPSET_EXCLUDE6 hash:net "$IPSET_OPT_EXCLUDE" "$ZIPLIST_EXCLUDE6"
  }
  true
