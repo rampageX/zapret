@@ -198,6 +198,27 @@ static int rawsend_sendto_divert(sa_family_t family, int sock, const void *buf, 
 }
 #endif
 
+static int rawsend_socket_raw(int domain, int proto)
+{
+	int fd = socket(domain, SOCK_RAW, proto);
+	if (fd!=-1)
+	{
+		#ifdef __linux__
+		int s=RAW_SNDBUF/2;
+		int r=2048;
+		#else
+		int s=RAW_SNDBUF;
+		int r=4096;
+		#endif
+		if (!set_socket_buffers(fd,r,s))
+		{
+			close(fd);
+			return -1;
+		}
+	}
+	return fd;
+}
+
 static int rawsend_socket(sa_family_t family,uint32_t fwmark)
 {
 	int yes=1;
@@ -213,12 +234,12 @@ static int rawsend_socket(sa_family_t family,uint32_t fwmark)
 		// IPPROTO_RAW with ipv6 in FreeBSD always returns EACCES on sendto.
 		// must use IPPROTO_TCP for ipv6. IPPROTO_RAW works for ipv4
 		// divert sockets are always v4 but accept both v4 and v6
-		*sock = (family==AF_INET) ? socket(family, SOCK_RAW, IPPROTO_TCP) : rawsend_socket_divert(AF_INET);
+		*sock = (family==AF_INET) ? rawsend_socket_raw(family, IPPROTO_TCP) : rawsend_socket_divert(AF_INET);
 #elif defined(__OpenBSD__)
 		// OpenBSD does not allow sending TCP frames through raw sockets
 		*sock = rawsend_socket_divert(family);
 #else
-		*sock = socket(family, SOCK_RAW, IPPROTO_RAW);
+		*sock = rawsend_socket_raw(family, IPPROTO_RAW);
 #endif
 		if (*sock==-1)
 		{
