@@ -150,6 +150,7 @@ Sadly PF auto applies return rule to divert-packet.
 Not only outgoing packets go through dvtws but also incoming.
 This adds great unneeded overhead that will be the most noticable on http/https downloads.
 I could not figure out how to disable this feature.
+Thats why you are encouraged to use table filters with your personal blocked site lists.
 
 OpenBSD forcibly recomputes tcp checksum after divert. Thats why most likely
 dpi-desync-fooling=badsum will not work. dvtws will warn if you specify this parameter.
