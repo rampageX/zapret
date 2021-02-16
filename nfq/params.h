@@ -10,8 +10,17 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#ifdef __OpenBSD__
+// divert-packet also diverts return traffic. sockets will experience high load
+#define Q_RCVBUF	(256*1024)	// in bytes
+#define Q_SNDBUF	(256*1024)	// in bytes
+#define RAW_SNDBUF	(64*1024)	// in bytes
+#else
 #define Q_RCVBUF	(128*1024)	// in bytes
 #define Q_SNDBUF	(64*1024)	// in bytes
+#define RAW_SNDBUF	(64*1024)	// in bytes
+#endif
+
 #define Q_MAXLEN	1024		// in packets
 
 struct params_s

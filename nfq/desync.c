@@ -49,7 +49,7 @@ const uint8_t fake_tls_clienthello_default[517] = {
     0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-#define PKT_MAXDUMP 16
+#define PKT_MAXDUMP 32
 
 static uint8_t zeropkt[DPI_DESYNC_MAX_FAKE_LEN];
 
@@ -229,7 +229,8 @@ packet_process_result dpi_desync_packet(uint8_t *data_pkt, size_t len_pkt, struc
 				{
 					return res;
 				}
-				DLOG("sending fake request\n");
+				DLOG("sending fake request : ");
+				hexdump_limited_dlog(fake,fake_size,PKT_MAXDUMP); DLOG("\n")
 				b = true;
 				break;
 			case DESYNC_RST:

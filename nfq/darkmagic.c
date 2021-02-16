@@ -159,7 +159,12 @@ static int rawsend_socket_divert(sa_family_t family)
 		{
 			*pport = htons(port);
 			if (!bind(fd, (struct sockaddr*)&bp, slen))
+			{
+				// socket is send only. no need in large recv buffer
+				if (!set_socket_buffers(fd,4096,RAW_SNDBUF))
+					goto exiterr;
 				return fd;
+			}
 			if (errno!=EADDRINUSE)
 			{
 				perror("bind divert socket :");
@@ -167,6 +172,7 @@ static int rawsend_socket_divert(sa_family_t family)
 			}
 		}
 	}
+exiterr:
 	close(fd);
 	return -1;
 }
