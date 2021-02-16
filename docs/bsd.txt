@@ -117,7 +117,6 @@ OpenBSD
 
 tpws для проходящего трафика :
 
-OpenBSD PF :
 /etc/pf.conf
 ------------
 pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 988 

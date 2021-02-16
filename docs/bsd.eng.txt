@@ -105,7 +105,6 @@ Use --bind-addr=0.0.0.0 --bind-addr=::  to achieve the same default bind as in o
 
 tpws for forwarded traffic only :
 
-OpenBSD PF :
 /etc/pf.conf
 ------------
 pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 988 
