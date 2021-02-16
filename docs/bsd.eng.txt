@@ -82,16 +82,14 @@ dvtws quick start.
 
 For all traffic:
 ipfw delete 100
-ipfw add 100 allow all from any to any diverted out
 ipfw add 100 divert 989 tcp from any to any 80,443 out not diverted not sockarg xmit em0
-/opt/zapret/nfq/dvtws --port=989 --debug --dpi-desync=split
+/opt/zapret/nfq/dvtws --port=989 --dpi-desync=split2
 
 Process only table zapret with the exception of table nozapret :
 ipfw delete 100
-ipfw add 100 allow all from any to any diverted out
 ipfw add 100 allow tcp from me to table\(nozapret\) 80,443
 ipfw add 100 divert 989 tcp from any to table\(zapret\) 80,443 out not diverted not sockarg xmit em0
-/opt/zapret/nfq/dvtws --port=989 --debug --dpi-desync=split
+/opt/zapret/nfq/dvtws --port=989 --dpi-desync=split2
 
 Reinjection loop avoidance.
 FreeBSD artificially ignores sockarg for ipv6 in the kernel.
@@ -109,8 +107,10 @@ tpws for forwarded traffic only :
 
 OpenBSD PF :
 /etc/pf.conf
+------------
 pass in quick on em1 inet  proto tcp to port {80,443} rdr-to 127.0.0.1 port 988 
 pass in quick on em1 inet6 proto tcp to port {80,443} rdr-to ::1 port 988 
+------------
 pfctl -f /etc/pf.conf
 tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
@@ -119,10 +119,38 @@ rdr-to support is done using /dev/pf, that's why transparent mode requires root.
 
 dvtws for all traffic:
 
-pass out quick on em0 inet  proto tcp to port {80,443} divert-packet port 989
-pass out quick on em0 inet6 proto tcp to port {80,443} divert-packet port 989
+/etc/pf.conf
+------------
+pass out quick on em0 proto tcp to port {80,443} divert-packet port 989
+------------
 pfctl -f /etc/pf.conf
 ./dvtws --port=989 --dpi-desync=split2
+
+dwtwws only for table zapret with the exception of table nozapret :
+
+/etc/pf.conf
+------------
+set limit table-entries 2000000
+table <zapret> file "/opt/zapret/ipset/zapret-ip.txt"
+table <nozapret> file "/opt/zapret/ipset/zapret-ip-exclude.txt"
+pass out quick on em0 inet  proto tcp to <nozapret> port {80,443}
+pass out quick on em0 inet  proto tcp to <zapret>  port {80,443} divert-packet port 989
+table <zapret6> file "/opt/zapret/ipset/zapret-ip6.txt"
+table <nozapret6> file "/opt/zapret/ipset/zapret-ip-exclude6.txt"
+pass out quick on em0 inet6 proto tcp to <nozapret6> port {80,443}
+pass out quick on em0 inet6 proto tcp to <zapret6> port {80,443} divert-packet port 989
+------------
+pfctl -f /etc/pf.conf
+./dvtws --port=989 --dpi-desync=split2
+
+
+dvtws in OpenBSD sends all fakes through a divert socket because raw sockets have critical artificial limitations.
+Looks like pf automatically prevent reinsertion of diverted frames. Loop problem does not exist.
+
+Sadly PF auto applies return rule to divert-packet.
+Not only outgoing packets go through dvtws but also incoming.
+This adds great unneeded overhead that will be the most noticable on http/https downloads.
+I could not figure out how to disable this feature.
 
 OpenBSD forcibly recomputes tcp checksum after divert. Thats why most likely
 dpi-desync-fooling=badsum will not work. dvtws will warn if you specify this parameter.
