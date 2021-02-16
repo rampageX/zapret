@@ -161,7 +161,10 @@ static packet_process_result processPacketData(uint8_t *data_pkt, size_t len_pkt
 		// ipv6 packets were with incorrect checksum
 		// because I dont know what causes checksum to corrupt I prefer to recalc it always
 		// yes it takes some CPU time. but its better to be sure csums are ok or it won't work at all
-#ifndef BSD
+#ifdef __FreeBSD__
+		// FreeBSD tend to pass ipv6 frames with wrong checksum
+		if (res==modify || ip6hdr)
+#else
 		if (res==modify)
 #endif
 			tcp_fix_checksum(tcphdr,len_tcp,ip,ip6hdr);
