@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #define Q_RCVBUF	(128*1024)	// in bytes
+#define Q_SNDBUF	(64*1024)	// in bytes
 #define Q_MAXLEN	1024		// in packets
 
 struct params_s

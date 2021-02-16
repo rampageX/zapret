@@ -159,8 +159,6 @@ static packet_process_result processPacketData(uint8_t *data_pkt, size_t len_pkt
 		res = (res2==pass && res==modify) ? modify : res2;
 		// in my FreeBSD divert tests only ipv4 packets were reinjected with correct checksum
 		// ipv6 packets were with incorrect checksum
-		// because I dont know what causes checksum to corrupt I prefer to recalc it always
-		// yes it takes some CPU time. but its better to be sure csums are ok or it won't work at all
 #ifdef __FreeBSD__
 		// FreeBSD tend to pass ipv6 frames with wrong checksum
 		if (res==modify || ip6hdr)
@@ -268,12 +266,8 @@ static int nfq_main()
 
 	// increase socket buffer size. on slow systems reloading hostlist can take a while.
 	// if too many unhandled packets are received its possible to get "no buffer space available" error
-	rv = Q_RCVBUF/2;
-	if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rv, sizeof(int)) == -1)
-	{
-		perror("setsockopt (SO_RCVBUF): ");
+	if (!set_socket_buffers(fd,Q_RCVBUF/2,Q_SNDBUF/2))
 		goto exiterr;
-	}
 	do
 	{
 		while ((rv = recv(fd, buf, sizeof(buf), 0)) && rv >= 0)
@@ -340,7 +334,10 @@ static int dvt_main()
 			perror("bind (DIVERT4): ");
 			goto exiterr;
 		}
+		if (!set_socket_buffers(fd[0],Q_RCVBUF,Q_SNDBUF))
+			goto exiterr;
 	}
+
 
 #ifdef __OpenBSD__
 	{
@@ -363,6 +360,8 @@ static int dvt_main()
 			goto exiterr;
 		}
 		fdct++;
+		if (!set_socket_buffers(fd[1],Q_RCVBUF,Q_SNDBUF))
+			goto exiterr;
 	}
 #endif
 	fdmax = (fd[0]>fd[1] ? fd[0] : fd[1]) + 1;
