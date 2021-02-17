@@ -49,22 +49,21 @@ FreeBSD
 -------
 
 Divert sockets require special kernel module 'ipdivert'.
-To enable it in FreeBSD add the following parameter to /boot/loader.conf (create if absent) :
+Write the following to config files :
+/boot/loader.conf (create if absent) :
 -----------
 ipdivert_load="YES"
+net.inet.ip.fw.default_to_accept="1"
 -----------
-Its possible to load ipfw the same way with ipfw_load but this way you will cut networking because
-default rule is to deny everything.
-Its better to add to /etc/rc.conf :
+/etc/rc.conf :
 -----------
 firewall_enable="YES"
 -----------
-And create minimal /etc/rc.firewall :
+/etc/rc.firewall (create if absent) :
 -----------
 ipfw -q -f flush
-ipfw -q add 10100 allow all from any to any
 -----------
-Later you will add ipfw commands there to be reapplied after reboot.
+Later you will add ipfw commands to /etc/rc.firewall to be reapplied after reboot.
 
 Assume LAN='em1', WAN="em0".
 
