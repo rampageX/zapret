@@ -20,12 +20,6 @@ Compile all programs with PF support : make -C /opt/zapret CFLAGS=-DUSE_PF
 In FreeBSD enable PF only if you use it. Its undesirable if you don't.
 PF is enabled automatically in OpenBSD.
 
-Divert sockets require special kernel module 'ipdivert'.
-To enable it in FreeBSD add the following parameter to /etc/rc.conf :
-natd_enable="YES"
-To enable ipfw :
-firewall_enable="YES"
-
 Divert sockets are internal type sockets in the BSD kernel. They have no relation to network addresses
 or network packet exchange. They are identified by a port number 1..65535. Its like queue number in NFQUEUE.
 Traffic can be diverted to a divert socket using firewall rule.
@@ -53,6 +47,24 @@ mdig and ip2net are fully compatible with BSD.
 
 FreeBSD
 -------
+
+Divert sockets require special kernel module 'ipdivert'.
+To enable it in FreeBSD add the following parameter to /boot/loader.conf (create if absent) :
+-----------
+ipdivert_load="YES"
+-----------
+Its possible to load ipfw the same way with ipfw_load but this way you will cut networking because
+default rule is to deny everything.
+Its better to add to /etc/rc.conf :
+-----------
+firewall_enable="YES"
+-----------
+And create minimal /etc/rc.firewall :
+-----------
+ipfw -q -f flush
+ipfw -q add 10100 allow all from any to any
+-----------
+Later you will add ipfw commands there to be reapplied after reboot.
 
 Assume LAN='em1', WAN="em0".
 
