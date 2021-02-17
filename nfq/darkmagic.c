@@ -131,50 +131,13 @@ static int rawsend_socket_divert(sa_family_t family)
 	// we either have to go to the link layer (its hard, possible problems arise, compat testing, ...) or use some HACKING
 	// from my point of view disabling direct ability to send ip frames is not security. its SHIT
 
-	struct sockaddr_storage bp;
-	socklen_t slen;
-	uint16_t *pport;
-	int fd;
-
-	memset(&bp,0,sizeof(bp));
-	bp.ss_family = family;
-	switch(family)
+	int fd = socket(family, SOCK_RAW, IPPROTO_DIVERT);
+	if (!set_socket_buffers(fd,4096,RAW_SNDBUF))
 	{
-		case AF_INET:
-			pport = &((struct sockaddr_in*)&bp)->sin_port;
-			slen = sizeof(struct sockaddr_in);
-			break;
-		case AF_INET6:
-			pport = &((struct sockaddr_in6*)&bp)->sin6_port;
-			slen = sizeof(struct sockaddr_in6);
-			break;
-		default:
-			return -1;
+		close(fd);
+		return -1;
 	}
-	fd = socket(family, SOCK_RAW, IPPROTO_DIVERT);
-	if (fd != -1)
-	{
-		// bind to any available port
-		for (uint16_t port=65535 ; port ; port--)
-		{
-			*pport = htons(port);
-			if (!bind(fd, (struct sockaddr*)&bp, slen))
-			{
-				// socket is send only. no need in large recv buffer
-				if (!set_socket_buffers(fd,4096,RAW_SNDBUF))
-					goto exiterr;
-				return fd;
-			}
-			if (errno!=EADDRINUSE)
-			{
-				perror("bind divert socket :");
-				break;
-			}
-		}
-	}
-exiterr:
-	close(fd);
-	return -1;
+	return fd;
 }
 static int rawsend_sendto_divert(sa_family_t family, int sock, const void *buf, size_t len)
 {
