@@ -292,8 +292,24 @@ bool rawsend(const struct sockaddr* dst,uint32_t fwmark,const void *data,size_t 
 	}
 #endif
 
+#if defined(__FreeBSD__) && __FreeBSD__<=10
+	// old FreeBSD requires some fields in the host byte order
+	if (dst->sa_family==AF_INET && len>=sizeof(struct ip))
+	{
+		((struct ip*)data)->ip_len = htons(((struct ip*)data)->ip_len);
+		((struct ip*)data)->ip_off = htons(((struct ip*)data)->ip_off);
+	}
+#endif
 	// normal raw socket sendto
 	ssize_t bytes = sendto(sock, data, len, 0, (struct sockaddr*)&dst2, salen);
+#if defined(__FreeBSD) && __FreeBSD__<=10
+	// restore byte order
+	if (dst->sa_family==AF_INET && len>=sizeof(struct ip))
+	{
+		((struct ip*)data)->ip_len = htons(((struct ip*)data)->ip_len);
+		((struct ip*)data)->ip_off = htons(((struct ip*)data)->ip_off);
+	}
+#endif
 	if (bytes==-1)
 	{
 		perror("rawsend: sendto");
