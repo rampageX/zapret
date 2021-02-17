@@ -18,6 +18,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <time.h>
 
 #define RESOLVER_EAGAIN_ATTEMPTS 2
 
@@ -84,6 +85,7 @@ static struct
 	char verbose;
 	char family;
 	int threads;
+	time_t start_time;
 	pthread_mutex_t flock;
 	pthread_mutex_t slock; // stats lock
 	int stats_every, stats_ct, stats_ct_ok; // stats
@@ -136,7 +138,10 @@ static void print_addrinfo(struct addrinfo *ai)
 static void stat_print(int ct, int ct_ok)
 {
 	if (glob.stats_every > 0)
-		interlocked_fprintf(stderr, "mdig stats : domains=%d success=%d error=%d\n", ct, ct_ok, ct - ct_ok);
+	{
+		time_t tm = time(NULL)-glob.start_time;
+		interlocked_fprintf(stderr, "mdig stats : %02u:%02u:%02u : domains=%d success=%d error=%d\n", tm/3600, (tm/60)%60, tm%60, ct, ct_ok, ct - ct_ok);
+	}
 }
 
 static void stat_plus(char is_ok)
@@ -255,6 +260,7 @@ static int run_threads()
 	pthread_t *t;
 
 	glob.stats_ct = glob.stats_ct_ok = 0;
+	time(&glob.start_time);
 	if (pthread_mutex_init(&glob.flock, NULL) != 0)
 	{
 		fprintf(stderr, "mutex init failed\n");
