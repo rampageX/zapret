@@ -396,7 +396,7 @@ get_ram_mb()
 ask_config_tmpdir()
 {
 	# ask tmpdir change for low ram systems with enough free disk space
-	[ -n "$GETLIST" ] && [ $(get_free_space_mb "$ZAPRET_BASE/tmp") -ge 128 ] && [ $(get_ram_mb) -le 200 ] && {
+	[ -n "$GETLIST" ] && [ $(get_free_space_mb "$ZAPRET_BASE/tmp") -ge 128 ] && [ $(get_ram_mb) -le 400 ] && {
 		echo
 		echo /tmp in openwrt is tmpfs. on low RAM systems there may be not enough RAM to store downloaded files
 		echo default tmpfs has size of 50% RAM
