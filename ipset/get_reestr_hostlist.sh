@@ -23,7 +23,7 @@ if test $dlsize -lt 204800; then
  echo list file is too small. can be bad.
  exit 2
 fi
-(cut -s -f2 -d';' "$ZREESTR" | grep -a . | sed -re 's/^\*\.(.+)$/\1/' | awk '{ print tolower($0) }' ; cat "$ZUSERLIST" ) | sort -u | zz "$ZHOSTLIST"
+(cut -s -f2 -d';' "$ZREESTR" | sed -re 's/^\*\.(.+)$/\1/' -ne 's/^[a-z0-9A-Z._-]+$/&/p' | awk '{ print tolower($0) }' ; cat "$ZUSERLIST" ) | sort -u | zz "$ZHOSTLIST"
 rm -f "$ZREESTR"
 
 # force daemons to reload hostlist if they are running

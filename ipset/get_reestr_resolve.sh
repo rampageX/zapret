@@ -27,10 +27,9 @@ if test $dlsize -lt 204800; then
  echo list file is too small. can be bad.
  exit 2
 fi
+
 echo preparing dig list ..
-#sed -i 's/\\n/\r\n/g' $ZREESTR
-#sed -nre 's/^[^;]*;([^;|\\]{4,250})\;.*$/\1/p' $ZREESTR | sort | uniq >$ZDIG
-cut -f2 -d ';' "$ZREESTR"  | grep -avE '^$|\*|:' >"$ZDIG"
+cut -f2 -d ';' "$ZREESTR"  | sed -re 's/^\*\.(.+)$/\1/' -ne 's/^[a-z0-9A-Z._-]+$/&/p' >"$ZDIG"
 rm -f "$ZREESTR"
 
 echo digging started. this can take long ...
