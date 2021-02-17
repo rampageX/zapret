@@ -1,3 +1,10 @@
+Supported versions
+------------------
+
+FreeBSD 11.x+ , OpenBSD 6.x+
+
+Older versions may work or not. pfSense is not supported.
+
 BSD features
 ------------
 
