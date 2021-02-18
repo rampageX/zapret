@@ -58,12 +58,20 @@ net.inet.ip.fw.default_to_accept="1"
 /etc/rc.conf :
 -----------
 firewall_enable="YES"
+firewall_script="/etc/rc.firewall.my"
 -----------
-/etc/rc.firewall (create if absent) :
+/etc/rc.firewall.my :
 -----------
 ipfw -q -f flush
 -----------
-Later you will add ipfw commands to /etc/rc.firewall to be reapplied after reboot.
+Later you will add ipfw commands to /etc/rc.firewall.my to be reapplied after reboot.
+You can also run zapret daemons from there. Start them with "--daemon" options, for example :
+-----------
+pkill ^dvtws$
+/opt/zapret/nfq/dvtws --port=989 --daemon --dpi-desync=split2
+-----------
+To restart firewall and daemons run : /etc/rc.d/ipfw restart
+
 
 Assume LAN='em1', WAN="em0".
 

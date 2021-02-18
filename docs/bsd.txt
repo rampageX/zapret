@@ -71,12 +71,20 @@ net.inet.ip.fw.default_to_accept="1"
 В /etc/rc.conf :
 -----------
 firewall_enable="YES"
+firewall_script="/etc/rc.firewall.my"
 -----------
-/etc/rc.firewall (создать, если отсутствует) :
+/etc/rc.firewall.my :
 -----------
 ipfw -q -f flush
 -----------
-В /etc/rc.firewall можно дописывать правила ipfw, чтобы они восстанавливались после перезагрузки.
+В /etc/rc.firewall.my можно дописывать правила ipfw, чтобы они восстанавливались после перезагрузки.
+Оттуда же можно запускать и демоны zapret, добавив в параметры "--daemon". Например так :
+-----------
+pkill ^dvtws$
+/opt/zapret/nfq/dvtws --port=989 --daemon --dpi-desync=split2
+-----------
+Для перезапуска фаервола и демонов достаточно будет сделать : /etc/rc.d/ipfw restart
+
 
 Краткая инструкция по запуску tpws в прозрачном режиме.
 Предполагается, что интерфейс LAN называется em1, WAN - em0.
