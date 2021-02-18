@@ -126,7 +126,8 @@ nfqws
 -----
 
 This program is a packet modifier and a NFQUEUE queue handler.
-It takes the following parameters:
+For BSD systems there is dvtws. Its built from the same source and has almost the same parameters (see bsd.eng.txt).
+nfqws takes the following parameters:
 
  --debug=0|1				; 1=print debug info
  --qnum=<nfqueue_number>

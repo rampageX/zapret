@@ -53,7 +53,7 @@ Write the following to config files :
 /boot/loader.conf (create if absent) :
 -----------
 ipdivert_load="YES"
-net.inet.ip.fw.default_to_accept="1"
+net.inet.ip.fw.default_to_accept=1
 -----------
 /etc/rc.conf :
 -----------
@@ -96,6 +96,9 @@ ipfw add 100 fwd ::1,988 tcp from any to any 80,443 proto ip6 recv em1
 /opt/zapret/tpws/tpws --port=988 --user=daemon --bind-addr=::1 --bind-addr=127.0.0.1
 
 Tables zapret, nozapret, ipban are created by ipset/*.sh scripts the same way as in Linux.
+Its a good idea to update tables periodically :
+ crontab -e
+ write the line : 0 12 */2 * * /opt/zapret/ipset/get_config.sh
 
 When using ipfw tpws does not require special permissions for transparent mode.
 However without root its not possible to bind to ports <1024 and change UID/GID. Without changing UID tpws
