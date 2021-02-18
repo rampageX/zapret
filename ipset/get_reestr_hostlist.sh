@@ -26,8 +26,6 @@ fi
 (cut -s -f2 -d';' "$ZREESTR" | sed -re 's/^\*\.(.+)$/\1/' -ne 's/^[a-z0-9A-Z._-]+$/&/p' | awk '{ print tolower($0) }' ; cat "$ZUSERLIST" ) | sort -u | zz "$ZHOSTLIST"
 rm -f "$ZREESTR"
 
-# force daemons to reload hostlist if they are running
-killall -HUP tpws 2>/dev/null
-killall -HUP nfqws 2>/dev/null
+hup_zapret_daemons
 
 exit 0

@@ -140,11 +140,20 @@ getuser()
  }
 }
 
-ipset_present()
+exists()
 {
- which ipset 2>/dev/null >/dev/null
+ which "$1" >/dev/null 2>/dev/null
 }
-ipfw_present()
+
+hup_zapret_daemons()
 {
- which ipfw 2>/dev/null >/dev/null
+ echo forcing zapret daemons to reload their hoslist
+ if exists killall; then
+  kcmd=killall
+  killall -HUP tpws nfqws dvtws 2>/dev/null
+ elif exists pkill; then
+  pkill -HUP ^tpws$ ^nfqws$ ^dvtws$
+ else
+  echo no mass killer available ! cant HUP zapret daemons
+ fi
 }

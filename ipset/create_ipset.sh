@@ -78,17 +78,18 @@ ipset_restore()
 
 create_ipset()
 {
- # $1 - ip version : 4,6
- # $2 - name
- # $3 - type
- # $4 - options
- # $5,$6 - ip lists
+ local IPSTYPE
+ if [ -x "$IP2NET" ]; then
+  IPSTYPE=hash:net
+ else
+  IPSTYPE=$3
+ fi
  if [ "$1" -eq "6" ]; then
   FAMILY=inet6
  else
   FAMILY=inet
  fi
- ipset create $2 $3 $4 family $FAMILY 2>/dev/null || {
+ ipset create $2 $IPSTYPE $4 family $FAMILY 2>/dev/null || {
   [ "$NO_UPDATE" = "1" ] && return
  }
  ipset flush $2
@@ -136,7 +137,7 @@ create_ipfw_table()
 
 oom_adjust_high
 
-if ipset_present; then
+if exists ipset; then
  # ipset seem to buffer the whole script to memory
  # on low RAM system this can cause oom errors
  # in SAVERAM mode we feed script lines in portions starting from the end, while truncating source file to free /tmp space
@@ -147,17 +148,17 @@ if ipset_present; then
   [ "$RAMSIZE" -lt "110000" ] && SAVERAM=1
  }
  [ "$DISABLE_IPV4" != "1" ] && {
-   create_ipset 4 $ZIPSET hash:net "$IPSET_OPT" "$ZIPLIST" "$ZIPLIST_USER"
-   create_ipset 4 $ZIPSET_IPBAN hash:net "$IPSET_OPT" "$ZIPLIST_IPBAN" "$ZIPLIST_USER_IPBAN"
+   create_ipset 4 $ZIPSET hash:ip "$IPSET_OPT" "$ZIPLIST" "$ZIPLIST_USER"
+   create_ipset 4 $ZIPSET_IPBAN hash:ip "$IPSET_OPT" "$ZIPLIST_IPBAN" "$ZIPLIST_USER_IPBAN"
    create_ipset 4 $ZIPSET_EXCLUDE hash:net "$IPSET_OPT_EXCLUDE" "$ZIPLIST_EXCLUDE"
  }
  [ "$DISABLE_IPV6" != "1" ] && {
-   create_ipset 6 $ZIPSET6 hash:net "$IPSET_OPT" "$ZIPLIST6" "$ZIPLIST_USER6"
-   create_ipset 6 $ZIPSET_IPBAN6 hash:net "$IPSET_OPT" "$ZIPLIST_IPBAN6" "$ZIPLIST_USER_IPBAN6"
+   create_ipset 6 $ZIPSET6 hash:ip "$IPSET_OPT" "$ZIPLIST6" "$ZIPLIST_USER6"
+   create_ipset 6 $ZIPSET_IPBAN6 hash:ip "$IPSET_OPT" "$ZIPLIST_IPBAN6" "$ZIPLIST_USER_IPBAN6"
    create_ipset 6 $ZIPSET_EXCLUDE6 hash:net "$IPSET_OPT_EXCLUDE" "$ZIPLIST_EXCLUDE6"
  }
  true
-elif ipfw_present; then
+elif exists ipfw; then
  if [ "$DISABLE_IPV4" != "1" ] && [ "$DISABLE_IPV6" != "1" ]; then
   create_ipfw_table $ZIPSET "$IPFW_TABLE_OPT" "$ZIPLIST" "$ZIPLIST_USER" "$ZIPLIST6" "$ZIPLIST_USER6"
   create_ipfw_table $ZIPSET_IPBAN "$IPFW_TABLE_OPT" "$ZIPLIST_IPBAN" "$ZIPLIST_USER_IPBAN" "$ZIPLIST_IPBAN6" "$ZIPLIST_USER_IPBAN6"
