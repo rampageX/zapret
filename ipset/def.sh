@@ -147,7 +147,7 @@ exists()
 
 hup_zapret_daemons()
 {
- echo forcing zapret daemons to reload their hoslist
+ echo forcing zapret daemons to reload their hostlist
  if exists killall; then
   kcmd=killall
   killall -HUP tpws nfqws dvtws 2>/dev/null
