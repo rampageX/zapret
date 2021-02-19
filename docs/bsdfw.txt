@@ -51,7 +51,9 @@ ipfw -q add 360 allow all from any to me in recv $WAN
 ipfw -q add 390 nat 1 ip4 from any to any out xmit $WAN 
 ipfw -q add 10000 allow ip from any to any
 
-
+Forwarding :
+sysctl net.inet.ip.forwarding=1
+sysctl net.inet6.ip6.forwarding=1
 
 
 OpenBSD PF :

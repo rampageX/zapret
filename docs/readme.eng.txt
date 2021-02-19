@@ -8,6 +8,8 @@ Some features of the project are russian reality specific (such as getting list 
 blocked by Roskomnadzor), but most others are common.
 
 (EXPERIMENTAL) FreeBSD and OpenBSD are also supported.
+(EXPERIMENTAL, PARTIAL) MacOS limited support.
+see docs/bsd.eng.txt
 
 How it works
 ------------

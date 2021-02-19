@@ -288,36 +288,44 @@ bool set_socket_buffers(int fd, int rcvbuf, int sndbuf)
 
 //Createas a socket and initiates the connection to the host specified by 
 //remote_addr.
-//Returns 0 if something fails, >0 on success (socket fd).
+//Returns -1 if something fails, >0 on success (socket fd).
 static int connect_remote(const struct sockaddr *remote_addr)
 {
 	int remote_fd = 0, yes = 1, no = 0;
     
-	//Use NONBLOCK to avoid slow connects affecting the performance of other connections
- 	if((remote_fd = socket(remote_addr->sa_family, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0){
+	
+ 	if((remote_fd = socket(remote_addr->sa_family, SOCK_STREAM, 0)) < 0)
+ 	{
 		perror("socket (connect_remote): ");
-		return 0;
+		return -1;
 	}
-
+	// Use NONBLOCK to avoid slow connects affecting the performance of other connections
+	// separate fcntl call to comply with macos
+	if (fcntl(remote_fd, F_SETFL, O_NONBLOCK)<0)
+	{
+		perror("socket set O_NONBLOCK (connect_remote): ");
+		close(remote_fd);
+		return -1;
+	}
 	if(setsockopt(remote_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
 	{
 		perror("setsockopt (SO_REUSEADDR, connect_remote): ");
 		close(remote_fd);
-		return 0;
+		return -1;
 	}
 	if (!set_socket_buffers(remote_fd, params.remote_rcvbuf, params.remote_sndbuf))
-		return 0;
+		return -1;
 	if(!set_keepalive(remote_fd))
 	{
 		perror("set_keepalive: ");
 		close(remote_fd);
-		return 0;
+		return -1;
 	}
 	if (setsockopt(remote_fd, IPPROTO_TCP, TCP_NODELAY, params.skip_nodelay ? &no : &yes, sizeof(int)) <0)
 	{
 		perror("setsockopt (SO_NODELAY, connect_remote): ");
 		close(remote_fd);
-		return 0;
+		return -1;
 	}
 	if(connect(remote_fd, remote_addr, remote_addr->sa_family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6)) < 0)
 	{
@@ -325,7 +333,7 @@ static int connect_remote(const struct sockaddr *remote_addr)
 		{
 			perror("connect (connect_remote): ");
 			close(remote_fd);
-			return 0;
+			return -1;
 		}
 	}
 	DBGPRINT("Connecting remote fd=%d",remote_fd)
@@ -465,7 +473,7 @@ static tproxy_conn_t* add_tcp_connection(int efd, struct tailhead *conn_list,int
 
 	if (proxy_type==CONN_TYPE_TRANSPARENT)
 	{
-		if(!(remote_fd = connect_remote((struct sockaddr *)&orig_dst)))
+		if ((remote_fd = connect_remote((struct sockaddr *)&orig_dst)) < 0)
 		{
 			fprintf(stderr, "Failed to connect\n");
 			close(local_fd);
@@ -635,7 +643,7 @@ bool proxy_mode_connect_remote(const struct sockaddr *sa, tproxy_conn_t *conn, s
 		return false;
 	}
 
-	if (!(remote_fd = connect_remote(sa)))
+	if ((remote_fd = connect_remote(sa)) < 0)
 	{
 		fprintf(stderr, "socks failed to connect (1) errno=%d\n", errno);
 		socks_send_rep_errno(conn->socks_ver, conn->fd, errno);
@@ -1166,15 +1174,21 @@ int event_loop(int *listen_fd, size_t listen_fd_ct)
 
 				accept_salen = sizeof(accept_sa);
 				//Accept new connection
-				tmp_fd = accept4(conn->fd, (struct sockaddr*)&accept_sa, &accept_salen, SOCK_NONBLOCK);
+				tmp_fd = accept(conn->fd, (struct sockaddr*)&accept_sa, &accept_salen);
 				if (tmp_fd < 0)
 				{
-					fprintf(stderr, "Failed to accept connection\n");
+					perror("Failed to accept connection : ");
 				}
 				else if (legs_local >= params.maxconn) // each connection has 2 legs - local and remote
 				{
 					close(tmp_fd);
 					VPRINT("Too many local legs : %d", legs_local)
+				}
+				// separate fcntl call to comply with macos
+				else if (fcntl(tmp_fd, F_SETFL, O_NONBLOCK) < 0)
+				{
+					perror("socket set O_NONBLOCK (accept): ");
+					close(tmp_fd);
 				}
 				else if (!(conn=add_tcp_connection(efd, &conn_list, tmp_fd, (struct sockaddr*)&accept_sa, params.port, params.proxy_type)))
 				{
@@ -1182,7 +1196,7 @@ int event_loop(int *listen_fd, size_t listen_fd_ct)
 					VPRINT("Failed to add connection");
 				}
 				else
-				{
+				{	
 					print_legs();
 					VPRINT("Socket fd=%d (local) connected", conn->fd)
 				}

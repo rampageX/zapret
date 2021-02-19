@@ -10,6 +10,7 @@
 #include "params.h"
 #include "helpers.h"
 
+//#if !defined(USE_PF) && (defined(__OpenBSD__) || defined(__APPLE__))
 #if !defined(USE_PF) && defined(__OpenBSD__)
  #define USE_PF 1
 #endif
@@ -97,7 +98,6 @@ static bool destination_from_pf(const struct sockaddr *accept_sa, struct sockadd
 		DBGPRINT("destination_from_pf : unexpected address family %d",orig_dst->ss_family);
 		return false;
 	}
-
 
 	if (ioctl(redirector_fd, DIOCNATLOOK, &nl) < 0)
 	{

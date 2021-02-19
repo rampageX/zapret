@@ -183,3 +183,30 @@ Thats why you are encouraged to use table filters with your personal blocked sit
 
 OpenBSD forcibly recomputes tcp checksum after divert. Thats why most likely
 dpi-desync-fooling=badsum will not work. dvtws will warn if you specify this parameter.
+
+
+MacOS
+-----
+
+Initially, the kernel of this OS was based on BSD. That's why it is still BSD but a lot was modified by Apple.
+As usual a mass commercial project priorities differ from their free counterparts.
+Apple guys do what they want.
+What everyone have updated long ago they keep old like a mammoth. But who cares ?
+
+MacOS used to have ipfw but it was removed later and replaced by PF.
+Although the kernel still implements divert sockets their support was removed from PF. Or never supported.
+The fact is that divert-packet in /etc/pf.conf does not work. dvtws does compile but is useless.
+
+After some efforts tpws works. But apple guys have removed DIOCNATLOOK request to /dev/pf and thus its not possible
+to get original destination IP in transparent proxy making transparent mode not working.
+
+Conclusion : in MacOS only tpws works with --socks mode.
+Its possible to use a program such as Proxifier to make it transparent. Just dont forget to add tpws to the exception list
+or you will fall into endless loop.
+
+Build from source : make -C /opt/zapret mac
+
+ipset/*.sh scripts work but require some additional 3dparty programs.
+brew : brew install coreutils grep curl
+Install brew from https://brew.sh
+Only hostlist is useful with tpws.

@@ -1,4 +1,5 @@
 DIRS := nfq tpws ip2net mdig
+DIRS_MAC := tpws ip2net mdig
 TGT := binaries/my
 
 all:	clean
@@ -19,6 +20,19 @@ bsd:	clean
 	for dir in $(DIRS); do \
 		chmod -x "$$dir/"*; \
 		$(MAKE) -C "$$dir" bsd || exit; \
+		for exe in "$$dir/"*; do \
+			if [ -f "$$exe" ] && [ -x "$$exe" ]; then \
+				mv -f "$$exe" "${TGT}" ; \
+				ln -fs "../${TGT}/$$(basename "$$exe")" "$$exe" ; \
+			fi \
+		done \
+	done
+
+mac:	clean
+	mkdir -p "$(TGT)"; \
+	for dir in $(DIRS_MAC); do \
+		chmod -x "$$dir/"*; \
+		$(MAKE) -C "$$dir" mac || exit; \
 		for exe in "$$dir/"*; do \
 			if [ -f "$$exe" ] && [ -x "$$exe" ]; then \
 				mv -f "$$exe" "${TGT}" ; \

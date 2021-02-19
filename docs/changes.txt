@@ -181,3 +181,7 @@ limited FreeBSD and OpenBSD support
 v36
 
 full FreeBSD and OpenBSD support
+
+v37
+
+limited MacOS support
