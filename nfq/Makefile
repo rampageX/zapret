@@ -9,6 +9,7 @@ all: nfqws
 nfqws: $(SRC_FILES)
 	$(CC) $(CFLAGS) -o $@ $(SRC_FILES) $(LDFLAGS) $(LIBS)
 
+mac: bsd
 bsd: $(SRC_FILES)
 	$(CC) $(CFLAGS) -o dvtws $(SRC_FILES) $(LDFLAGS) $(LIBS_BSD)
 
