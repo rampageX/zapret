@@ -5,6 +5,7 @@ SRC_FILES = *.c
 
 all: mdig
 bsd: all
+mac: all
 
 mdig: $(SRC_FILES)
 	$(CC) $(CFLAGS) -o $@ $(SRC_FILES) $(LDFLAGS) $(LIBS)
