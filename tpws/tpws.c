@@ -126,7 +126,11 @@ static void exithelp()
 		" --remote-sndbuf=<bytes>\n"
 		" --skip-nodelay\t\t\t; do not set TCP_NODELAY option for outgoing connections (incompatible with split options)\n"
 		" --maxconn=<max_connections>\n"
+#ifdef SPLICE_PRESENT
 		" --maxfiles=<max_open_files>\t; should be at least (X*connections+16), where X=6 in tcp proxy mode, X=4 in tampering mode\n"
+#else
+		" --maxfiles=<max_open_files>\t; should be at least (connections*2+16)\n"
+#endif
 		" --max-orphan-time=<sec>\t; if local leg sends something and closes and remote leg is still connecting then cancel connection attempt after N seconds\n"
 		" --daemon\t\t\t; daemonize\n"
 		" --pidfile=<filename>\t\t; write pid to file\n"
