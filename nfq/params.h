@@ -10,7 +10,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#ifdef __OpenBSD__
+#if defined(__OpenBSD__) || defined (__APPLE__)
 // divert-packet also diverts return traffic. sockets will experience high load
 #define Q_RCVBUF	(256*1024)	// in bytes
 #define Q_SNDBUF	(256*1024)	// in bytes

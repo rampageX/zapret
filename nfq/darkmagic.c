@@ -198,8 +198,9 @@ static int rawsend_socket(sa_family_t family,uint32_t fwmark)
 		// must use IPPROTO_TCP for ipv6. IPPROTO_RAW works for ipv4
 		// divert sockets are always v4 but accept both v4 and v6
 		*sock = (family==AF_INET) ? rawsend_socket_raw(family, IPPROTO_TCP) : rawsend_socket_divert(AF_INET);
-#elif defined(__OpenBSD__)
+#elif defined(__OpenBSD__) || defined (__APPLE__)
 		// OpenBSD does not allow sending TCP frames through raw sockets
+		// I dont know about macos. They have dropped ipfw in recent versions and their PF does not support divert-packet
 		*sock = rawsend_socket_divert(family);
 #else
 		*sock = rawsend_socket_raw(family, IPPROTO_RAW);
@@ -210,8 +211,8 @@ static int rawsend_socket(sa_family_t family,uint32_t fwmark)
 			return -1;
 		}
 #ifdef BSD
+#if !(defined(__OpenBSD__) || defined (__APPLE__))
 		// HDRINCL not supported for ipv6 in any BSD
-#ifndef __OpenBSD__
 		if (family==AF_INET && setsockopt(*sock,IPPROTO_IP,IP_HDRINCL,&yes,sizeof(yes)) == -1)
 		{
 			perror("rawsend: setsockopt(IP_HDRINCL)");
@@ -277,7 +278,7 @@ bool rawsend(const struct sockaddr* dst,uint32_t fwmark,const void *data,size_t 
 		}
 */
 
-#ifndef __OpenBSD__
+#if !(defined(__OpenBSD__) || defined (__APPLE__))
 	// OpenBSD doesnt allow rawsending tcp frames. always use divert socket
 	if (dst->sa_family==AF_INET6)
 #endif

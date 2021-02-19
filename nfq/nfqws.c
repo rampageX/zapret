@@ -471,7 +471,9 @@ static void exithelp()
 #endif
 		" --dpi-desync-ttl=<int>\t\t\t; set ttl for desync packet\n"
 		" --dpi-desync-fooling=<mode>[,<mode>]\t; can use multiple comma separated values. modes : none md5sig ts badseq badsum\n"
+#ifdef __linux__
 		" --dpi-desync-retrans=0|1\t\t; 0(default)=reinject original data packet after fake  1=drop original data packet to force its retransmission\n"
+#endif
 		" --dpi-desync-repeats=<N>\t\t; send every desync packet N times\n"
 		" --dpi-desync-skip-nosni=0|1\t\t; 1(default)=do not act on ClientHello without SNI (ESNI ?)\n"
 		" --dpi-desync-split-pos=<1..%u>\t; (for disorder only) split TCP packet at specified position\n"
@@ -722,7 +724,12 @@ int main(int argc, char **argv)
 			}
 			break;
 		case 15: /* dpi-desync-retrans */
+#ifdef __linux__
 			params.desync_retrans = !optarg || atoi(optarg);
+#else
+			fprintf(stderr, "dpi-desync-retrans is only supported in linux\n");
+			exit_clean(1);
+#endif
 			break;
 		case 16: /* dpi-desync-repeats */
 			params.desync_repeats = atoi(optarg);
