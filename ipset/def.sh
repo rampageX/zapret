@@ -43,7 +43,7 @@ exists()
  which "$1" >/dev/null 2>/dev/null
 }
 
-# MacOS and OpenBSD greps are damn grep with -f option. prefer ggrep installed by 'brew install grep' or 'pkg_add ggrep'
+# MacOS and OpenBSD greps are damn slow with -f option. prefer ggrep installed by 'brew install grep' or 'pkg_add ggrep'
 if exists ggrep; then
  GREP=ggrep
 else
