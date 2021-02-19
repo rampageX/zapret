@@ -187,6 +187,7 @@ add tcp option "MD5 signature". All of them have their own disadvantages :
 For fake,rst,rstack modes original packet can be sent after the fake one or just dropped.
 If its dropped OS will perform first retransmission after 0.2 sec, then the delay increases exponentially.
 Delay can help to make sure fake and original packets are properly ordered and processed on DPI.
+When dpi-desync-retrans=1 its mandatory to use connbytes in iptables rule. Otherwise loop happens.
 
 Disorder mode splits original packet and sends packets in the following order :
 1. 2nd segment

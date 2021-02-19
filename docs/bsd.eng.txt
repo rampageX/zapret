@@ -184,6 +184,9 @@ Thats why you are encouraged to use table filters with your personal blocked sit
 OpenBSD forcibly recomputes tcp checksum after divert. Thats why most likely
 dpi-desync-fooling=badsum will not work. dvtws will warn if you specify this parameter.
 
+ipset scripts do not reload PF. To reload run "pf -f /etc/pf.conf" separately.
+If you want to refresh lists from cron write your script that first calls ipset script then reloads PF.
+
 
 MacOS
 -----
