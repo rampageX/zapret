@@ -3,7 +3,11 @@
 # create ipset or ipfw table from resolved ip's
 # $1=no-update    - do not update ipset, only create if its absent
 
-SCRIPT=$(readlink -f "$0")
+if which greadlink >/dev/null 2>/dev/null; then
+ SCRIPT=$(greadlink -f "$0")
+else
+ SCRIPT=$(readlink -f "$0")
+fi
 EXEDIR=$(dirname "$SCRIPT")
 
 . "$EXEDIR/def.sh"
@@ -144,7 +148,7 @@ if exists ipset; then
  # only /tmp is considered tmpfs. other locations mean tmpdir was redirected to a disk
  SAVERAM=0
  [ "$TMPDIR" = "/tmp" ] && {
-  RAMSIZE=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+  RAMSIZE=$($GREP MemTotal /proc/meminfo | awk '{print $2}')
   [ "$RAMSIZE" -lt "110000" ] && SAVERAM=1
  }
  [ "$DISABLE_IPV4" != "1" ] && {

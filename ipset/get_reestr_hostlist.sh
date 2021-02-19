@@ -1,6 +1,10 @@
 #!/bin/sh
 
-SCRIPT=$(readlink -f "$0")
+if which greadlink >/dev/null 2>/dev/null; then
+ SCRIPT=$(greadlink -f "$0")
+else
+ SCRIPT=$(readlink -f "$0")
+fi
 EXEDIR=$(dirname "$SCRIPT")
 
 . "$EXEDIR/def.sh"
@@ -18,12 +22,12 @@ curl -k --fail --max-time 600 --connect-timeout 5 --retry 3 --max-filesize 25165
  echo reestr list download failed   
  exit 2
 }
-dlsize=$(wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
+dlsize=$(LANG=C wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
 if test $dlsize -lt 204800; then
  echo list file is too small. can be bad.
  exit 2
 fi
-(cut -s -f2 -d';' "$ZREESTR" | sed -re 's/^\*\.(.+)$/\1/' -ne 's/^[a-z0-9A-Z._-]+$/&/p' | awk '{ print tolower($0) }' ; cat "$ZUSERLIST" ) | sort -u | zz "$ZHOSTLIST"
+(LANG=C cut -s -f2 -d';' "$ZREESTR" | LANG=C sed -re 's/^\*\.(.+)$/\1/' -ne 's/^[a-z0-9A-Z._-]+$/&/p' | awk '{ print tolower($0) }' ; cat "$ZUSERLIST" ) | sort -u | zz "$ZHOSTLIST"
 rm -f "$ZREESTR"
 
 hup_zapret_daemons

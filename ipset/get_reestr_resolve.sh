@@ -1,6 +1,10 @@
 #!/bin/sh
 
-SCRIPT=$(readlink -f "$0")
+if which greadlink >/dev/null 2>/dev/null; then
+ SCRIPT=$(greadlink -f "$0")
+else
+ SCRIPT=$(readlink -f "$0")
+fi
 EXEDIR=$(dirname "$SCRIPT")
 
 . "$EXEDIR/def.sh"
@@ -22,14 +26,14 @@ curl -k --fail --max-time 600 --connect-timeout 5 --retry 3 --max-filesize 25165
  exit 2
 }
 
-dlsize=$(wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
+dlsize=$(LANG=C wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
 if test $dlsize -lt 204800; then
  echo list file is too small. can be bad.
  exit 2
 fi
 
 echo preparing dig list ..
-cut -f2 -d ';' "$ZREESTR"  | sed -re 's/^\*\.(.+)$/\1/' -ne 's/^[a-z0-9A-Z._-]+$/&/p' >"$ZDIG"
+LANG=C cut -f2 -d ';' "$ZREESTR"  | LANG=C sed -re 's/^\*\.(.+)$/\1/' -ne 's/^[a-z0-9A-Z._-]+$/&/p' >"$ZDIG"
 rm -f "$ZREESTR"
 
 echo digging started. this can take long ...

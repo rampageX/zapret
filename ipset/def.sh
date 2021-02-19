@@ -38,6 +38,18 @@ ZUSERLIST_EXCLUDE="$EXEDIR/zapret-hosts-user-exclude.txt"
 MDIG="$EXEDIR/../mdig/mdig"
 [ -z "$MDIG_THREADS" ] && MDIG_THREADS=30
 
+exists()
+{
+ which "$1" >/dev/null 2>/dev/null
+}
+
+# MacOS and OpenBSD greps are damn grep with -f option. prefer ggrep installed by 'brew install grep' or 'pkg_add ggrep'
+if exists ggrep; then
+ GREP=ggrep
+else
+ GREP=grep
+fi
+
 
 ip2net4()
 {
@@ -96,17 +108,17 @@ digger()
  else
   local A=A
   [ "$2" = "6" ] && A=AAAA
-  zzcat "$1" | dig $A +short +time=8 +tries=2 -f - | grep -E '^[^;].*[^\.]$'
+  zzcat "$1" | dig $A +short +time=8 +tries=2 -f - | $GREP -E '^[^;].*[^\.]$'
  fi
 }
 
 cut_local()
 {
-  grep -vE '^192\.168\.|^127\.|^10\.'
+  $GREP -vE '^192\.168\.|^127\.|^10\.'
 }
 cut_local6()
 {
-  grep -vE '^::|fc..:|fd..:'
+  $GREP -vE '^::|fc..:|fd..:'
 }
 
 oom_adjust_high()
@@ -138,11 +150,6 @@ getuser()
   [ "$DISABLE_IPV4" != "1" ] && digger "$ZUSERLIST_IPBAN" 4 | cut_local | sort -u > "$ZIPLIST_USER_IPBAN"
   [ "$DISABLE_IPV6" != "1" ] && digger "$ZUSERLIST_IPBAN" 6 | cut_local6 | sort -u > "$ZIPLIST_USER_IPBAN6"
  }
-}
-
-exists()
-{
- which "$1" >/dev/null 2>/dev/null
 }
 
 hup_zapret_daemons()

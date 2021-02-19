@@ -1,6 +1,10 @@
 #!/bin/sh
 
-SCRIPT=$(readlink -f "$0")
+if which greadlink >/dev/null 2>/dev/null; then
+ SCRIPT=$(greadlink -f "$0")
+else
+ SCRIPT=$(readlink -f "$0")
+fi
 EXEDIR=$(dirname "$SCRIPT")
 
 . "$EXEDIR/def.sh"
@@ -19,7 +23,7 @@ dig_reestr()
 
  echo processing reestr list $2
 
- tail -n +2 "$ZREESTR" | grep -oE "$1" | cut_local | ip2net$3 | zz "$2"
+ tail -n +2 "$ZREESTR" | $GREP -oE "$1" | cut_local | ip2net$3 | zz "$2"
 }
 
 
@@ -29,7 +33,7 @@ curl -k --fail --max-time 600 --connect-timeout 5 --retry 3 --max-filesize 25165
  echo reestr list download failed
  exit 2
 }
-dlsize=$(wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
+dlsize=$(LANG=C wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
 if test $dlsize -lt 1048576; then
  echo reestr ip list is too small. can be bad.
  exit 2

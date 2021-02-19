@@ -1,6 +1,10 @@
 #!/bin/sh
 
-SCRIPT=$(readlink -f "$0")
+if which greadlink >/dev/null 2>/dev/null; then
+ SCRIPT=$(greadlink -f "$0")
+else
+ SCRIPT=$(readlink -f "$0")
+fi
 EXEDIR=$(dirname "$SCRIPT")
 
 . "$EXEDIR/def.sh"
@@ -25,13 +29,13 @@ dig_reestr()
 
  # find entries with https or without domain name - they should be banned by IP
  # 2971-18 is TELEGRAM. lots of proxy IPs banned, list grows very large
- (grep -avE "$DOMMASK" "$ZREESTR" ; grep -a "https://" "$ZREESTR") |
-  grep -oE "$1" | cut_local | sort -u >$TMP
+ ($GREP -avE "$DOMMASK" "$ZREESTR" ; $GREP -a "https://" "$ZREESTR") |
+  $GREP -oE "$1" | cut_local | sort -u >$TMP
 
  ip2net$4 <"$TMP" | zz "$3" 
 
  # other IPs go to regular zapret list
- tail -n +2 "$ZREESTR"  | grep -oE "$1" | cut_local | grep -xvFf "$TMP" | ip2net$4 | zz "$2"
+ tail -n +2 "$ZREESTR"  | $GREP -oE "$1" | cut_local | $GREP -xvFf "$TMP" | ip2net$4 | zz "$2"
 
  rm -f "$TMP"
 }
@@ -42,7 +46,7 @@ curl -k --fail --max-time 600 --connect-timeout 5 --retry 3 --max-filesize 25165
  echo reestr list download failed
  exit 2
 }
-dlsize=$(wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
+dlsize=$(LANG=C wc -c "$ZREESTR" | xargs | cut -f 1 -d ' ')
 if test $dlsize -lt 1048576; then
  echo reestr ip list is too small. can be bad.
  exit 2
