@@ -118,7 +118,7 @@ cut_local()
 }
 cut_local6()
 {
-  $GREP -vE '^::|fc..:|fd..:'
+  $GREP -vE '^::|^fc..:|^fd..:'
 }
 
 oom_adjust_high()
