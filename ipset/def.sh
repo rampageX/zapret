@@ -94,14 +94,14 @@ zzsize()
 {
  local f="$1"
  [ -f "$1.gz" ] && f="$1.gz"
- wc -c <"$f"
+ wc -c <"$f" | xargs
 }
 
 digger()
 {
  # $1 - hostlist
  # $2 - family (4|6)
- >&2 echo digging $(wc -l <"$1") ipv$2 domains : "$1"
+ >&2 echo digging $(wc -l <"$1" | xargs) ipv$2 domains : "$1"
 
  if [ -x "$MDIG" ]; then
   zzcat "$1" | "$MDIG" --family=$2 --threads=$MDIG_THREADS --stats=1000
