@@ -175,15 +175,18 @@ dvtws для трафика только на таблицу zapret, за иск
 
 /etc/pf.conf
 ------------
-set limit table-entries 2000000
 table <zapret> file "/opt/zapret/ipset/zapret-ip.txt"
+table <zapret-user> file "/opt/zapret/ipset/zapret-ip-user.txt"
 table <nozapret> file "/opt/zapret/ipset/zapret-ip-exclude.txt"
 pass out quick on em0 inet  proto tcp to <nozapret> port {80,443}
 pass out quick on em0 inet  proto tcp to <zapret>  port {80,443} divert-packet port 989
+pass out quick on em0 inet  proto tcp to <zapret-user>  port {80,443} divert-packet port 989
 table <zapret6> file "/opt/zapret/ipset/zapret-ip6.txt"
+table <zapret6-user> file "/opt/zapret/ipset/zapret-ip-user6.txt"
 table <nozapret6> file "/opt/zapret/ipset/zapret-ip-exclude6.txt"
 pass out quick on em0 inet6 proto tcp to <nozapret6> port {80,443}
 pass out quick on em0 inet6 proto tcp to <zapret6> port {80,443} divert-packet port 989
+pass out quick on em0 inet6 proto tcp to <zapret6-user> port {80,443} divert-packet port 989
 ------------
 pfctl -f /etc/pf.conf
 ./dvtws --port=989 --dpi-desync=split2
@@ -202,9 +205,18 @@ OpenBSD принудительно пересчитывает tcp checksum по�
 dpi-desync-fooling=badsum у вас не заработает. При использовании этого параметра
 dvtws предупредит о возможной проблеме.
 
-Скрипты из ipset не перезагружают таблицы в PF. Для обновления листов нужно выполнить "pf -f /etc/pf.conf"
-отдельно. Если вы забрасываете обновление листов в крон - напишите свой скрипт, который сначала
-вызовет ipset скрипт, потом обновит PF.
+Скрипты из ipset не перезагружают таблицы в PF по умолчанию.
+Чтобы они это делали, добавьте параметр в /opt/zapret/config :
+LISTS_RELOAD="pfctl -f /etc/pf.conf"
+Более новые версии pfctl понимают команду перезагрузить только таблицы : pfctl -Tl -f /etc/pf.conf
+Но это не относится к OpenBSD 6.8. В новых FreeBSD есть.
+Не забудьте выключить сжатие gzip :
+GZIP_LISTS=0
+Если в вашей конфигурации какого-то файла листа нет, то его необходимо исключить из правил PF.
+Если вдруг листа нет, и он задан в pf.conf, будет ошибка перезагрузки фаервола.
+После настройки обновление листов можно поместить в cron :
+ crontab -e
+ write the line : 0 12 */2 * * /opt/zapret/ipset/get_config.sh
 
 Если будете пользоваться скриптом ipset/get_combined.sh, установите GNU grep : pkg_add ggrep.
 Родной древний как мамонт, безумно медленный с опцией -f.

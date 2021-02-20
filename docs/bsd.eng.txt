@@ -158,15 +158,18 @@ dwtws only for table zapret with the exception of table nozapret :
 
 /etc/pf.conf
 ------------
-set limit table-entries 2000000
 table <zapret> file "/opt/zapret/ipset/zapret-ip.txt"
+table <zapret-user> file "/opt/zapret/ipset/zapret-ip-user.txt"
 table <nozapret> file "/opt/zapret/ipset/zapret-ip-exclude.txt"
 pass out quick on em0 inet  proto tcp to <nozapret> port {80,443}
 pass out quick on em0 inet  proto tcp to <zapret>  port {80,443} divert-packet port 989
+pass out quick on em0 inet  proto tcp to <zapret-user>  port {80,443} divert-packet port 989
 table <zapret6> file "/opt/zapret/ipset/zapret-ip6.txt"
+table <zapret6-user> file "/opt/zapret/ipset/zapret-ip-user6.txt"
 table <nozapret6> file "/opt/zapret/ipset/zapret-ip-exclude6.txt"
 pass out quick on em0 inet6 proto tcp to <nozapret6> port {80,443}
 pass out quick on em0 inet6 proto tcp to <zapret6> port {80,443} divert-packet port 989
+pass out quick on em0 inet6 proto tcp to <zapret6-user> port {80,443} divert-packet port 989
 ------------
 pfctl -f /etc/pf.conf
 ./dvtws --port=989 --dpi-desync=split2
@@ -184,8 +187,17 @@ Thats why you are encouraged to use table filters with your personal blocked sit
 OpenBSD forcibly recomputes tcp checksum after divert. Thats why most likely
 dpi-desync-fooling=badsum will not work. dvtws will warn if you specify this parameter.
 
-ipset scripts do not reload PF. To reload run "pf -f /etc/pf.conf" separately.
-If you want to refresh lists from cron write your script that first calls ipset script then reloads PF.
+ipset scripts do not reload PF by default. To enable reload specify command in /opt/zapret/config :
+LISTS_RELOAD="pfctl -f /etc/pf.conf"
+Newer pfctl versions can reload tables only : pfctl -Tl -f /etc/pf.conf
+But OpenBSD 6.8 pfctl is old enough and does not support that. Newer FreeBSD do.
+Don't forget to disable gzip compression :
+GZIP_LISTS=0
+If some list files do not exist and have references in pf.conf it leads to error.
+You need to exclude those tables from pf.conf and referencing them rules.
+After configuration is done you can put ipset script :
+ crontab -e
+ write the line : 0 12 */2 * * /opt/zapret/ipset/get_config.sh
 
 
 MacOS

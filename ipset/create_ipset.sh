@@ -141,7 +141,15 @@ create_ipfw_table()
 
 oom_adjust_high
 
-if exists ipset; then
+if [ -n "$LISTS_RELOAD" ] ; then
+ if [ "$LISTS_RELOAD" = "-" ] ; then
+  echo not reloading ip list backend
+  true
+ else
+  echo executing custom ip list reload command : $LISTS_RELOAD
+  $LISTS_RELOAD
+ fi
+elif exists ipset; then
  # ipset seem to buffer the whole script to memory
  # on low RAM system this can cause oom errors
  # in SAVERAM mode we feed script lines in portions starting from the end, while truncating source file to free /tmp space
@@ -151,6 +159,7 @@ if exists ipset; then
   RAMSIZE=$($GREP MemTotal /proc/meminfo | awk '{print $2}')
   [ "$RAMSIZE" -lt "110000" ] && SAVERAM=1
  }
+ echo reloading ipset backend
  [ "$DISABLE_IPV4" != "1" ] && {
    create_ipset 4 $ZIPSET hash:ip "$IPSET_OPT" "$ZIPLIST" "$ZIPLIST_USER"
    create_ipset 4 $ZIPSET_IPBAN hash:ip "$IPSET_OPT" "$ZIPLIST_IPBAN" "$ZIPLIST_USER_IPBAN"
@@ -163,6 +172,7 @@ if exists ipset; then
  }
  true
 elif exists ipfw; then
+ echo reloading ipfw table backend
  if [ "$DISABLE_IPV4" != "1" ] && [ "$DISABLE_IPV6" != "1" ]; then
   create_ipfw_table $ZIPSET "$IPFW_TABLE_OPT" "$ZIPLIST" "$ZIPLIST_USER" "$ZIPLIST6" "$ZIPLIST_USER6"
   create_ipfw_table $ZIPSET_IPBAN "$IPFW_TABLE_OPT" "$ZIPLIST_IPBAN" "$ZIPLIST_USER_IPBAN" "$ZIPLIST_IPBAN6" "$ZIPLIST_USER_IPBAN6"
@@ -183,5 +193,5 @@ elif exists ipfw; then
  true
 else
  echo no supported ip list backend found
- false
+ true
 fi

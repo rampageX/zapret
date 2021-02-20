@@ -76,10 +76,14 @@ pfctl -f /etc/pf.conf
 ; reload tables : pfctl -f /etc/pf.conf
 set limit table-entries 2000000
 table <zapret> file "/opt/zapret/ipset/zapret-ip.txt"
+table <zapret-user> file "/opt/zapret/ipset/zapret-ip-user.txt"
 table <nozapret> file "/opt/zapret/ipset/zapret-ip-exclude.txt"
 pass out quick on em0 inet  proto tcp to <nozapret> port {80,443}
 pass out quick on em0 inet  proto tcp to <zapret>  port {80,443} divert-packet port 989
+pass out quick on em0 inet  proto tcp to <zapret-user>  port {80,443} divert-packet port 989
 table <zapret6> file "/opt/zapret/ipset/zapret-ip6.txt"
+table <zapret6-user> file "/opt/zapret/ipset/zapret-ip-user6.txt"
 table <nozapret6> file "/opt/zapret/ipset/zapret-ip-exclude6.txt"
 pass out quick on em0 inet6 proto tcp to <nozapret6> port {80,443}
 pass out quick on em0 inet6 proto tcp to <zapret6> port {80,443} divert-packet port 989
+pass out quick on em0 inet6 proto tcp to <zapret6-user> port {80,443} divert-packet port 989
