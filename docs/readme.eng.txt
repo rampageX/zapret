@@ -468,6 +468,12 @@ IP2NET_OPT6="--prefix-length=56-64 --v6-threshold=5"
 Enable gzip compression for large lists. Used by ipset/*.sh scripts.
 GZIP_LISTS=1
 
+Command to reload ip/host lists after update.
+Comment or leave empty for auto backend selection : ipset or ipfw if present.
+On BSD systems with PF no auto reloading happens. You must provide your own command.
+Newer FreeBSD versions support table only reloading : pfctl -Tl -f /etc/pf.conf
+Set to "-" to disable reload.
+LISTS_RELOAD="pfctl -f /etc/pf.conf"
 
 The following settings are not relevant for openwrt :
 
