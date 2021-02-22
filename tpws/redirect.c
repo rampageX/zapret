@@ -175,15 +175,18 @@ bool get_dest_addr(int sockfd, const struct sockaddr *accept_sa, struct sockaddr
 	if (saconvmapped(orig_dst))
 		DBGPRINT("Original destination : converted ipv6 mapped address to ipv4");
 
-	if (orig_dst->ss_family == AF_INET)
+	if (params.debug)
 	{
-		inet_ntop(AF_INET, &(((struct sockaddr_in*) orig_dst)->sin_addr), orig_dst_str, INET_ADDRSTRLEN);
-		VPRINT("Original destination for socket fd=%d : %s:%d", sockfd,orig_dst_str, htons(((struct sockaddr_in*) orig_dst)->sin_port))
-	}
-	else if (orig_dst->ss_family == AF_INET6)
-	{
-		inet_ntop(AF_INET6,&(((struct sockaddr_in6*) orig_dst)->sin6_addr), orig_dst_str, INET6_ADDRSTRLEN);
-		VPRINT("Original destination for socket fd=%d : [%s]:%d", sockfd,orig_dst_str, htons(((struct sockaddr_in6*) orig_dst)->sin6_port))
+		if (orig_dst->ss_family == AF_INET)
+		{
+			inet_ntop(AF_INET, &(((struct sockaddr_in*) orig_dst)->sin_addr), orig_dst_str, INET_ADDRSTRLEN);
+			VPRINT("Original destination for socket fd=%d : %s:%d", sockfd,orig_dst_str, htons(((struct sockaddr_in*) orig_dst)->sin_port))
+		}
+		else if (orig_dst->ss_family == AF_INET6)
+		{
+			inet_ntop(AF_INET6,&(((struct sockaddr_in6*) orig_dst)->sin6_addr), orig_dst_str, INET6_ADDRSTRLEN);
+			VPRINT("Original destination for socket fd=%d : [%s]:%d", sockfd,orig_dst_str, htons(((struct sockaddr_in6*) orig_dst)->sin6_port))
+		}
 	}
 	return true;
 }
