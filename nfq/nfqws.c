@@ -314,7 +314,6 @@ static int dvt_main()
 	socklen_t socklen;
 	ssize_t rd,wr;
 	packet_process_result ppr;
-	struct timeval timeout={1,0};
 	fd_set fdset;
 
 	{
@@ -383,7 +382,7 @@ static int dvt_main()
 	{
 		FD_ZERO(&fdset);
 		for(i=0;i<fdct;i++) FD_SET(fd[i], &fdset);
-		r = select(fdmax,&fdset,NULL,NULL,&timeout);
+		r = select(fdmax,&fdset,NULL,NULL,NULL);
 		if (r==-1)
 		{
 			if (errno==EINTR)
